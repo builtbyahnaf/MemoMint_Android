@@ -215,6 +215,7 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
 
         /**
          * Applies type-specific background badges and text labels.
+         * The colors automatically resolve between Light and Dark mode using DayNight resource qualifiers.
          */
         private void applyTypeBadgeStyle(Context context, MemoryType type) {
             if (type == null) type = MemoryType.NOTE;
@@ -222,34 +223,34 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
             switch (type) {
                 case PHYSICAL_ITEM:
                     tvTypeBadge.setText("PHYSICAL ITEM");
-                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.chip_physical_item));
-                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.chip_physical_item_text));
+                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_physical_item_bg));
+                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.badge_physical_item_text));
                     break;
                 case LOCATION:
                     tvTypeBadge.setText("LOCATION");
-                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.chip_location));
-                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.chip_location_text));
+                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_location_bg));
+                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.badge_location_text));
                     break;
                 case FILE_REFERENCE:
                     tvTypeBadge.setText("FILE REF");
-                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.chip_file));
-                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.chip_file_text));
+                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_file_bg));
+                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.badge_file_text));
                     break;
                 case DOCUMENT_CONTEXT:
                     tvTypeBadge.setText("DOCUMENT");
-                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.mint_secondary_container));
-                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.mint_on_secondary_container));
+                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_document_bg));
+                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.badge_document_text));
                     break;
                 case REMINDER:
                     tvTypeBadge.setText("REMINDER");
-                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.chip_reminder));
-                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.chip_reminder_text));
+                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_reminder_bg));
+                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.badge_reminder_text));
                     break;
                 case NOTE:
                 default:
                     tvTypeBadge.setText("NOTE");
-                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.chip_note));
-                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.chip_note_text));
+                    tvTypeBadge.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_note_bg));
+                    tvTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.badge_note_text));
                     break;
             }
         }

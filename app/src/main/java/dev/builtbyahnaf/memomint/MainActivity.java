@@ -4,6 +4,7 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
@@ -81,13 +82,6 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        // Apply system bar insets for edge-to-edge layout
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
         // Initialize Services & Persistence Layer
         MemoMintDatabase database = MemoMintDatabase.getInstance(this);
         MemoryRepositoryImpl repository = new MemoryRepositoryImpl(database);
@@ -99,6 +93,40 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
         progressBar = findViewById(R.id.progressBar);
         chipGroupFilter = findViewById(R.id.chipGroupFilter);
         fabAddMemory = findViewById(R.id.fabAddMemory);
+
+        // Configure edge-to-edge insets:
+        // 1. Top status bar insets are applied to the AppBar header so the background extends behind the status bar.
+        // 2. Bottom navigation bar insets are applied to the RecyclerView bottom padding and FAB margin.
+        View headerContainer = findViewById(R.id.headerContainer);
+        int initialHeaderPaddingTop = headerContainer.getPaddingTop();
+        int initialFabMarginBottom = ((ViewGroup.MarginLayoutParams) fabAddMemory.getLayoutParams()).bottomMargin;
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            // Extend AppBar behind the status bar
+            headerContainer.setPadding(
+                    headerContainer.getPaddingLeft(),
+                    initialHeaderPaddingTop + systemBars.top,
+                    headerContainer.getPaddingRight(),
+                    headerContainer.getPaddingBottom()
+            );
+
+            // Elevate FAB above system navigation bar
+            ViewGroup.MarginLayoutParams fabParams = (ViewGroup.MarginLayoutParams) fabAddMemory.getLayoutParams();
+            fabParams.bottomMargin = initialFabMarginBottom + systemBars.bottom;
+            fabAddMemory.setLayoutParams(fabParams);
+
+            // Ensure RecyclerView items don't hide behind system navigation bar
+            recyclerView.setPadding(
+                    recyclerView.getPaddingLeft(),
+                    recyclerView.getPaddingTop(),
+                    recyclerView.getPaddingRight(),
+                    systemBars.bottom + 96
+            );
+
+            return insets;
+        });
 
         // Configure RecyclerView
         memoryAdapter = new MemoryAdapter(this);

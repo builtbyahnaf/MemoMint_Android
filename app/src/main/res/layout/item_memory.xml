@@ -5,10 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
-    app:cardBackgroundColor="@color/white"
+    app:cardBackgroundColor="@color/card_background"
     app:cardCornerRadius="16dp"
-    app:cardElevation="1dp"
-    app:strokeColor="@color/surface_variant_light"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/card_stroke"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -17,7 +17,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Top Header: Type Badge & Date -->
+        <!-- Top Header: Type Badge & Relative Date -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -28,11 +28,11 @@
                 android:id="@+id/tvTypeBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@color/chip_physical_item"
+                android:background="@color/badge_physical_item_bg"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="4dp"
                 android:text="PHYSICAL ITEM"
-                android:textColor="@color/chip_physical_item_text"
+                android:textColor="@color/badge_physical_item_text"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 tools:text="PHYSICAL ITEM" />
@@ -46,7 +46,7 @@
                 android:id="@+id/tvDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/on_surface_variant_light"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="12sp"
                 tools:text="Oct 15, 2026" />
         </LinearLayout>
@@ -57,21 +57,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textColor="@color/on_surface_light"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="16sp"
             android:textStyle="bold"
             android:visibility="gone"
             tools:text="Spare USB-C Cable"
             tools:visibility="visible" />
 
-        <!-- Original User Text (Primary Truth) -->
+        <!-- Original User Text (Primary Content) -->
         <TextView
             android:id="@+id/tvOriginalText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:lineSpacingExtra="3dp"
-            android:textColor="@color/on_surface_light"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             tools:text="Left the spare cable in the second drawer of my desk beside the bed." />
 
@@ -91,7 +91,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/mint_primary"
+                android:textColor="?attr/colorPrimary"
                 android:textSize="12sp"
                 android:textStyle="italic"
                 tools:text="✓ Confirmed today" />
@@ -103,7 +103,7 @@
                 android:layout_height="36dp"
                 android:paddingHorizontal="8dp"
                 android:text="@string/action_confirm"
-                android:textColor="@color/mint_primary"
+                android:textColor="?attr/colorPrimary"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -121,6 +121,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:text="@string/action_edit"
+                android:textColor="?attr/colorPrimary"
                 android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
@@ -129,6 +130,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:text="@string/action_archive"
+                android:textColor="?attr/colorSecondary"
                 android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
@@ -137,7 +139,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:text="@string/action_delete"
-                android:textColor="#BA1A1A"
+                android:textColor="?attr/colorError"
                 android:textSize="12sp" />
         </LinearLayout>
 

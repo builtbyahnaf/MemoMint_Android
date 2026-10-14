@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Primitive Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Material 3 Dark Mint Theme Palette -->
+    <color name="md_theme_dark_primary">#6CDBAC</color>
+    <color name="md_theme_dark_onPrimary">#003825</color>
+    <color name="md_theme_dark_primaryContainer">#005138</color>
+    <color name="md_theme_dark_onPrimaryContainer">#89F8C7</color>
+
+    <color name="md_theme_dark_secondary">#B3CCBC</color>
+    <color name="md_theme_dark_onSecondary">#1F3529</color>
+    <color name="md_theme_dark_secondaryContainer">#354B3F</color>
+    <color name="md_theme_dark_onSecondaryContainer">#CFE9D8</color>
+
+    <color name="md_theme_dark_tertiary">#A5CCDF</color>
+    <color name="md_theme_dark_onTertiary">#073543</color>
+    <color name="md_theme_dark_tertiaryContainer">#244C5B</color>
+    <color name="md_theme_dark_onTertiaryContainer">#C1E8FB</color>
+
+    <color name="md_theme_dark_error">#FFB4AB</color>
+    <color name="md_theme_dark_onError">#690005</color>
+    <color name="md_theme_dark_errorContainer">#93000A</color>
+    <color name="md_theme_dark_onErrorContainer">#FFDAD6</color>
+
+    <color name="md_theme_dark_background">#101512</color>
+    <color name="md_theme_dark_onBackground">#E0E4DF</color>
+    <color name="md_theme_dark_surface">#101512</color>
+    <color name="md_theme_dark_onSurface">#E0E4DF</color>
+    <color name="md_theme_dark_surfaceVariant">#404944</color>
+    <color name="md_theme_dark_onSurfaceVariant">#BFC9C2</color>
+    <color name="md_theme_dark_outline">#8A938C</color>
+    <color name="md_theme_dark_outlineVariant">#404944</color>
+
+    <color name="md_theme_dark_surfaceContainer">#1C211E</color>
+    <color name="md_theme_dark_surfaceContainerHigh">#262B28</color>
+
+    <!-- Semantic Component Colors (Dark Mode) -->
+    <color name="card_background">#1A1F1C</color>
+    <color name="card_stroke">#2B332E</color>
+
+    <!-- Memory Type Badges (Dark Mode: Deep tinted container with luminous text) -->
+    <color name="badge_physical_item_bg">#0C2B40</color>
+    <color name="badge_physical_item_text">#7DD3FC</color>
+
+    <color name="badge_note_bg">#3D2403</color>
+    <color name="badge_note_text">#FDE68A</color>
+
+    <color name="badge_location_bg">#3D0C22</color>
+    <color name="badge_location_text">#FBCFE8</color>
+
+    <color name="badge_file_bg">#27124D</color>
+    <color name="badge_file_text">#DDD6FE</color>
+
+    <color name="badge_document_bg">#0A2E1A</color>
+    <color name="badge_document_text">#86EFAC</color>
+
+    <color name="badge_reminder_bg">#3E1605</color>
+    <color name="badge_reminder_text">#FED7AA</color>
+</resources>

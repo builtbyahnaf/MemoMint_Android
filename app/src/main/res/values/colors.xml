@@ -1,36 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base Primitive Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    
-    <!-- MemoMint Mint / Emerald Brand Palette -->
-    <color name="mint_primary">#006C4C</color>
-    <color name="mint_on_primary">#FFFFFF</color>
-    <color name="mint_primary_container">#89F8C7</color>
-    <color name="mint_on_primary_container">#002114</color>
-    
-    <color name="mint_secondary">#4D6356</color>
-    <color name="mint_on_secondary">#FFFFFF</color>
-    <color name="mint_secondary_container">#CFE9D8</color>
-    <color name="mint_on_secondary_container">#0B1F15</color>
-    
-    <color name="surface_tint">#006C4C</color>
-    <color name="background_light">#F5FBF5</color>
-    <color name="surface_light">#F5FBF5</color>
-    <color name="surface_variant_light">#DBE5DE</color>
-    <color name="on_surface_light">#171D1A</color>
-    <color name="on_surface_variant_light">#404944</color>
-    <color name="outline_light">#707973</color>
-    
-    <!-- Badge / Chip Accents -->
-    <color name="chip_physical_item">#E0F2FE</color>
-    <color name="chip_physical_item_text">#0369A1</color>
-    <color name="chip_note">#FEF3C7</color>
-    <color name="chip_note_text">#B45309</color>
-    <color name="chip_location">#FCE7F3</color>
-    <color name="chip_location_text">#BE185D</color>
-    <color name="chip_file">#EDE9FE</color>
-    <color name="chip_file_text">#6D28D9</color>
-    <color name="chip_reminder">#FFEDD5</color>
-    <color name="chip_reminder_text">#C2410C</color>
+
+    <!-- Material 3 Light Mint Theme Palette -->
+    <color name="md_theme_light_primary">#006C4C</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#89F8C7</color>
+    <color name="md_theme_light_onPrimaryContainer">#002114</color>
+
+    <color name="md_theme_light_secondary">#4D6356</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#CFE9D8</color>
+    <color name="md_theme_light_onSecondaryContainer">#0B1F15</color>
+
+    <color name="md_theme_light_tertiary">#3D6373</color>
+    <color name="md_theme_light_onTertiary">#FFFFFF</color>
+    <color name="md_theme_light_tertiaryContainer">#C1E8FB</color>
+    <color name="md_theme_light_onTertiaryContainer">#001F29</color>
+
+    <color name="md_theme_light_error">#BA1A1A</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+    <color name="md_theme_light_errorContainer">#FFDAD6</color>
+    <color name="md_theme_light_onErrorContainer">#410002</color>
+
+    <color name="md_theme_light_background">#F7FAF7</color>
+    <color name="md_theme_light_onBackground">#181D1A</color>
+    <color name="md_theme_light_surface">#F7FAF7</color>
+    <color name="md_theme_light_onSurface">#181D1A</color>
+    <color name="md_theme_light_surfaceVariant">#DBE5DE</color>
+    <color name="md_theme_light_onSurfaceVariant">#404944</color>
+    <color name="md_theme_light_outline">#707973</color>
+    <color name="md_theme_light_outlineVariant">#BFC9C2</color>
+
+    <color name="md_theme_light_surfaceContainer">#ECEFEA</color>
+    <color name="md_theme_light_surfaceContainerHigh">#E6EAE5</color>
+
+    <!-- Semantic Component Colors (Light Mode) -->
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_stroke">#E0E5E1</color>
+
+    <!-- Memory Type Badges (Light Mode) -->
+    <color name="badge_physical_item_bg">#E0F2FE</color>
+    <color name="badge_physical_item_text">#0369A1</color>
+
+    <color name="badge_note_bg">#FEF3C7</color>
+    <color name="badge_note_text">#92400E</color>
+
+    <color name="badge_location_bg">#FCE7F3</color>
+    <color name="badge_location_text">#9D174D</color>
+
+    <color name="badge_file_bg">#EDE9FE</color>
+    <color name="badge_file_text">#5B21B6</color>
+
+    <color name="badge_document_bg">#E6F4EA</color>
+    <color name="badge_document_text">#137333</color>
+
+    <color name="badge_reminder_bg">#FFEDD5</color>
+    <color name="badge_reminder_text">#9A3412</color>
 </resources>
