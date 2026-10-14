@@ -1,4 +1,4 @@
-# Project WhereWasIt?
+# Project MemoMint
 
 ## An Offline-First, Open-Source Personal Memory Engine for Android
 
@@ -7,7 +7,7 @@
 | Project details | Value |
 |:--|:--|
 | **Project status** | Concept / pre-development |
-| **Working name** | Project WhereWasIt? |
+| **Working name** | Project MemoMint |
 | **Platform** | Android |
 | **Primary language** | Java |
 | **Architecture** | Native Android application with a modular, local-first memory engine |
@@ -53,11 +53,11 @@
 
 # 1. Executive Summary
 
-Project WhereWasIt? is an open-source, offline-first personal memory system designed to help people remember information, retrieve forgotten details, locate physical belongings, track files, and act on important memories without relying on cloud infrastructure or online AI services.
+Project MemoMint is an open-source, offline-first personal memory system designed to help people remember information, retrieve forgotten details, locate physical belongings, track files, and act on important memories without relying on cloud infrastructure or online AI services.
 
 People routinely forget where they placed an object, which document contains a particular detail, what they intended to do later, or the context surrounding something they previously learned or recorded. Existing tools generally separate these problems across note-taking applications, file managers, reminders, document search, and personal inventory systems.
 
-WhereWasIt? aims to unify these fragmented workflows into one searchable, context-aware personal memory engine.
+MemoMint aims to unify these fragmented workflows into one searchable, context-aware personal memory engine.
 
 Instead of requiring users to remember exact filenames, keywords, folder paths, or the wording of an original note, the application should interpret the intent behind a query and retrieve the most relevant recorded information.
 
@@ -71,7 +71,7 @@ Several days later, the user might search:
 
 The original memory does not need to contain the words "campus" or "need". The retrieval engine should use contextual associations, synonyms, metadata, and relevance ranking to identify the original memory.
 
-WhereWasIt? also aims to maintain the usefulness of memories over time. Files may move or disappear, physical objects may be relocated, and previously accurate information may become outdated. The application should detect what it can, communicate uncertainty honestly, and request confirmation when necessary.
+MemoMint also aims to maintain the usefulness of memories over time. Files may move or disappear, physical objects may be relocated, and previously accurate information may become outdated. The application should detect what it can, communicate uncertainty honestly, and request confirmation when necessary.
 
 The project is designed around three core pillars:
 
@@ -123,7 +123,7 @@ For example:
 
 The query and memory have a conceptual relationship, but they do not share many exact keywords.
 
-WhereWasIt? should bridge this gap using a layered retrieval system rather than relying exclusively on exact matches or a single machine-learning model.
+MemoMint should bridge this gap using a layered retrieval system rather than relying exclusively on exact matches or a single machine-learning model.
 
 ## 2.3 Memories become unreliable over time
 
@@ -147,7 +147,7 @@ Opening an application, navigating to a form, selecting a category, and manually
 
 If recording a memory takes too much effort, users may postpone it and forget the information before it is captured.
 
-WhereWasIt? should make capture available from Android's home screen, Quick Settings, voice input, and the system share sheet, with ordinary in-app entry as a fallback.
+MemoMint should make capture available from Android's home screen, Quick Settings, voice input, and the system share sheet, with ordinary in-app entry as a fallback.
 
 ## 2.5 Privacy and dependence on external services
 
@@ -155,7 +155,7 @@ Personal memories may reveal routines, possessions, documents, habits, and sensi
 
 A cloud-dependent memory service introduces questions about data transmission, external processing, account dependence, retention, and future service availability.
 
-WhereWasIt? will pursue a different approach: keep the core product functional offline, make local processing the default, minimize permissions, and make privacy behavior inspectable through its open-source implementation.
+MemoMint will pursue a different approach: keep the core product functional offline, make local processing the default, minimize permissions, and make privacy behavior inspectable through its open-source implementation.
 
 # 3. Product Vision
 
@@ -211,7 +211,7 @@ Users must be able to inspect, edit, delete, export, and correct their memories 
 
 # 4. Target Users and Use Cases
 
-WhereWasIt? is intended for people who routinely need to recall details from their everyday lives.
+MemoMint is intended for people who routinely need to recall details from their everyday lives.
 
 Potential users include:
 
@@ -279,7 +279,7 @@ Expected behavior:
 
 A user indexes a document and later moves or deletes it.
 
-WhereWasIt? should periodically verify whether the stored file reference remains valid, where platform permissions permit such checks.
+MemoMint should periodically verify whether the stored file reference remains valid, where platform permissions permit such checks.
 
 If the file cannot be found:
 
@@ -467,7 +467,7 @@ The system must not treat a semantically related result as automatically correct
 
 Verification keeps the system honest.
 
-WhereWasIt? should distinguish:
+MemoMint should distinguish:
 
 - What the user explicitly recorded.
 
@@ -2395,7 +2395,7 @@ The project should not be considered complete merely because every screen exists
 
 # 27. Final Product Statement
 
-Project WhereWasIt? is an attempt to make personal information easier to remember without requiring people to become better at organizing it.
+Project MemoMint is an attempt to make personal information easier to remember without requiring people to become better at organizing it.
 
 It combines structured memory capture, local document indexing, contextual retrieval, explicit memory relationships, reminders, and freshness verification in one Android application.
 
@@ -2405,4 +2405,4 @@ The project will begin with a Java-based Android implementation and a convention
 
 **Core philosophy: Capture effortlessly. Recall contextually. Verify honestly. Keep everything local.**
 
-**Working title:** Project WhereWasIt?
+**Working title:** Project MemoMint
