@@ -2,4 +2,35 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- MemoMint Mint / Emerald Brand Palette -->
+    <color name="mint_primary">#006C4C</color>
+    <color name="mint_on_primary">#FFFFFF</color>
+    <color name="mint_primary_container">#89F8C7</color>
+    <color name="mint_on_primary_container">#002114</color>
+    
+    <color name="mint_secondary">#4D6356</color>
+    <color name="mint_on_secondary">#FFFFFF</color>
+    <color name="mint_secondary_container">#CFE9D8</color>
+    <color name="mint_on_secondary_container">#0B1F15</color>
+    
+    <color name="surface_tint">#006C4C</color>
+    <color name="background_light">#F5FBF5</color>
+    <color name="surface_light">#F5FBF5</color>
+    <color name="surface_variant_light">#DBE5DE</color>
+    <color name="on_surface_light">#171D1A</color>
+    <color name="on_surface_variant_light">#404944</color>
+    <color name="outline_light">#707973</color>
+    
+    <!-- Badge / Chip Accents -->
+    <color name="chip_physical_item">#E0F2FE</color>
+    <color name="chip_physical_item_text">#0369A1</color>
+    <color name="chip_note">#FEF3C7</color>
+    <color name="chip_note_text">#B45309</color>
+    <color name="chip_location">#FCE7F3</color>
+    <color name="chip_location_text">#BE185D</color>
+    <color name="chip_file">#EDE9FE</color>
+    <color name="chip_file_text">#6D28D9</color>
+    <color name="chip_reminder">#FFEDD5</color>
+    <color name="chip_reminder_text">#C2410C</color>
 </resources>

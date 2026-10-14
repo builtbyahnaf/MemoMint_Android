@@ -1,3 +1,31 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">MemoMint</string>
+    <string name="app_tagline">Offline Personal Memory Engine</string>
+    <string name="filter_active">Active</string>
+    <string name="filter_archived">Archived</string>
+    <string name="empty_memories_title">No memories recorded yet</string>
+    <string name="empty_memories_subtitle">Capture thoughts, physical item locations, and reminders offline.</string>
+    <string name="add_memory">New Memory</string>
+    <string name="dialog_create_title">Record Memory</string>
+    <string name="dialog_edit_title">Edit Memory</string>
+    <string name="hint_memory_text">What do you want to remember?</string>
+    <string name="hint_memory_title">Title (optional)</string>
+    <string name="label_memory_type">Memory Type</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_confirm">Confirm Location</string>
+    <string name="status_confirmed_format">Confirmed %s</string>
+    <string name="status_unconfirmed">Not yet confirmed</string>
+    <string name="dialog_delete_title">Delete Memory</string>
+    <string name="dialog_delete_message">Are you sure you want to delete this memory? Associated context and reminders will also be removed.</string>
+    <string name="msg_memory_saved">Memory saved offline</string>
+    <string name="msg_memory_deleted">Memory deleted</string>
+    <string name="msg_memory_archived">Memory archived</string>
+    <string name="msg_memory_restored">Memory restored</string>
+    <string name="msg_memory_confirmed">Location confirmed</string>
+    <string name="error_empty_text">Please enter some text to remember</string>
 </resources>
