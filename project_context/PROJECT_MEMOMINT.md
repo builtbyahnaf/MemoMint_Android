@@ -2363,6 +2363,32 @@ For each substantial feature:
 
 If requirements conflict, preserve privacy, data integrity, and user intent over convenience or speculative feature expansion.
 
+## 25.7 Guidelines for AI Coding Agents
+
+If you are contributing to MemoMint using an AI coding agent, make sure the code is written to be understandable, maintainable, and easy to evaluate by both humans and AI tools.
+
+Writing code is not enough. The reasoning behind it should be clear too.
+
+Please follow these guidelines:
+
+1. **Document the purpose:** Add meaningful comments explaining what a function, class, or important block of code is supposed to do, especially when its purpose is not immediately obvious from the code itself.
+
+2. **Explain the underlying algorithm:** When implementing a nontrivial algorithm or logic, explain how it works, why it was chosen, and what problem it solves. Include a small example when it helps clarify the process.
+
+3. **Make complex logic easier to follow:** Explain important decisions, edge cases, assumptions, and potential limitations. Do not leave future contributors guessing why a particular approach was used.
+
+4. **Keep comments useful and accurate:** Avoid comments that simply repeat what the code already says. Comments must reflect the actual implementation and should be updated whenever the relevant logic changes.
+
+5. **Write for both humans and AI:** Code should be easy for another developer to review and for a future AI coding agent to understand, evaluate, debug, and safely modify without misinterpreting its behavior.
+
+6. **Explain non obvious tradeoffs:** If an implementation prioritizes performance, memory usage, privacy, reliability, or simplicity, document the reasoning when that decision matters.
+
+For example, if you implement a search ranking algorithm, do not simply name it and leave the implementation unexplained. Describe how the ranking works, what factors affect the score, and demonstrate how a simple query and two example memories would be ranked.
+
+The goal is not to comment on every line. It is to make sure that important code carries enough context for someone else to understand not only what it does, but also why it exists and how it works.
+
+These guidelines apply to AI generated code just as much as code written by hand. Review all generated changes before considering them complete.
+
 # 26. Definition of a Successful Initial Release
 
 The initial release will be considered successful when a user can:

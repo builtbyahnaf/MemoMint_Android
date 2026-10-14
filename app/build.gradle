@@ -29,6 +29,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
+
+    testOptions {
+        unitTests {
+            // Allows Robolectric tests to use Android framework classes
+            // (SQLiteDatabase, Context, etc.) on the JVM without a device.
+            includeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -37,6 +45,7 @@ dependencies {
     implementation libs.constraintlayout
     implementation libs.material
     testImplementation libs.junit
+    testImplementation libs.robolectric
     androidTestImplementation libs.espresso.core
     androidTestImplementation libs.ext.junit
 }
