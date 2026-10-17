@@ -70,7 +70,6 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
 
     private final List<Memory> items = new ArrayList<>();
     private final OnMemoryActionListener actionListener;
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
 
     /**
      * Constructs the adapter with a mandatory action listener.
@@ -84,7 +83,20 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
     /**
      * Replaces the adapter's data set using {@link DiffUtil} calculation for optimal UI performance.
      *
-     * @param newItems the fresh list of memories to display
+     * <h2>Algorithm & Complexity</h2>
+     * <p>Eugene Myers' difference algorithm is used via {@link DiffUtil#calculateDiff(DiffUtil.Callback)}.
+     * This compares {@code oldList} against {@code targetList} in $O(N + D^2)$ time, where $N$ is
+     * the sum of list lengths and $D$ is the number of edit script differences. It computes the
+     * minimal set of structural updates (insertions, deletions, moves, and mutations):</p>
+     * <ul>
+     *   <li>{@link DiffUtil.Callback#areItemsTheSame(int, int)}: Tests stable item identity using
+     *       {@link Memory#getId()}. If IDs match, the item is considered the same logical memory.</li>
+     *   <li>{@link DiffUtil.Callback#areContentsTheSame(int, int)}: Tests whether visual content
+     *       changed. Specifically checks {@code updatedAt}, {@code status}, {@code lastConfirmedAt},
+     *       and {@code originalText}. If all 4 match, no item rebind is dispatched.</li>
+     * </ul>
+     *
+     * @param newItems the fresh list of memories to display; passing null clears the list
      */
     public void submitList(List<Memory> newItems) {
         List<Memory> oldList = new ArrayList<>(this.items);
@@ -122,6 +134,13 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
         diffResult.dispatchUpdatesTo(this);
     }
 
+    /**
+     * Inflates the card view layout for an individual memory card.
+     *
+     * @param parent   the ViewGroup into which the new View will be added
+     * @param viewType the view type of the new View (unused here as cards share a single layout)
+     * @return a new {@link MemoryViewHolder} holding the inflated layout
+     */
     @NonNull
     @Override
     public MemoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -129,11 +148,22 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
         return new MemoryViewHolder(view);
     }
 
+    /**
+     * Binds domain data from the item at {@code position} to the view holder.
+     *
+     * @param holder   the ViewHolder to update
+     * @param position the zero-based index of the item within {@link #items}
+     */
     @Override
     public void onBindViewHolder(@NonNull MemoryViewHolder holder, int position) {
         holder.bind(items.get(position));
     }
 
+    /**
+     * Returns the total count of memories currently held in the adapter.
+     *
+     * @return item count
+     */
     @Override
     public int getItemCount() {
         return items.size();
@@ -143,6 +173,10 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
     // ViewHolder
     // =========================================================================
 
+    /**
+     * ViewHolder caching UI subview references for a single memory card to eliminate
+     * repeated {@code findViewById} lookups during fast scrolling.
+     */
     class MemoryViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView tvTypeBadge;
@@ -170,13 +204,28 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
             btnDelete = itemView.findViewById(R.id.btnDelete);
         }
 
+        /**
+         * Binds a {@link Memory} model instance to the view holder's UI elements.
+         *
+         * <h2>Workflow:</h2>
+         * <ol>
+         *   <li><b>Type Badge:</b> Applies Day/Night adaptive color tokens according to memory type.</li>
+         *   <li><b>Timestamp:</b> Converts UTC epoch creation timestamp to human-friendly relative span.</li>
+         *   <li><b>Title:</b> Toggles visibility based on whether an optional title was provided.</li>
+         *   <li><b>Original Text:</b> Binds unedited user text (the primary truth of the memory).</li>
+         *   <li><b>Freshness:</b> If PHYSICAL_ITEM or LOCATION, reveals confirmation status and re-confirm button.</li>
+         *   <li><b>Action Buttons:</b> Configures archive vs. restore label and binds click listeners.</li>
+         * </ol>
+         *
+         * @param memory the memory data to display
+         */
         void bind(Memory memory) {
             Context context = itemView.getContext();
 
             // 1. Memory Type Badge
             applyTypeBadgeStyle(context, memory.getType());
 
-            // 2. Creation Date formatting
+            // 2. Creation Date formatting (relative time, e.g. "5m ago", "Yesterday")
             String dateStr = DateUtils.getRelativeTimeSpanString(
                     memory.getCreatedAt(),
                     System.currentTimeMillis(),

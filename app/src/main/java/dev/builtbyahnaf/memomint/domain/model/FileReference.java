@@ -141,43 +141,258 @@ public class FileReference {
     // Getters & setters
     // -------------------------------------------------------------------------
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    /**
+     * Gets the stable UUID identifier for this file reference.
+     *
+     * @return stable UUID string
+     */
+    public String getId() {
+        return id;
+    }
 
-    public String getUriOrPath() { return uriOrPath; }
-    public void setUriOrPath(String uriOrPath) { this.uriOrPath = uriOrPath; }
+    /**
+     * Sets the stable UUID identifier for this file reference.
+     *
+     * @param id stable UUID string
+     */
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getDisplayName() { return displayName; }
-    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    /**
+     * Gets the content URI or filesystem path used to access this document.
+     *
+     * <p><b>Android Scoped Storage Tradeoff:</b> On modern Android (API 29+), content URIs obtained via
+     * the Storage Access Framework (SAF) with persisted permissions
+     * ({@code Intent.FLAG_GRANT_READ_URI_PERMISSION}) must be preferred over absolute filesystem paths.
+     * Absolute paths often fail when app storage isolation or external media remounting occurs.</p>
+     *
+     * @return content URI string (e.g., "content://com.android.providers.media.documents/document/...")
+     *         or absolute path; never null for valid records
+     */
+    public String getUriOrPath() {
+        return uriOrPath;
+    }
 
-    public String getMimeType() { return mimeType; }
-    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    /**
+     * Sets the content URI or filesystem path for this document.
+     *
+     * @param uriOrPath content URI string or file path; must not be null
+     */
+    public void setUriOrPath(String uriOrPath) {
+        this.uriOrPath = uriOrPath;
+    }
 
-    public Long getSizeBytes() { return sizeBytes; }
-    public void setSizeBytes(Long sizeBytes) { this.sizeBytes = sizeBytes; }
+    /**
+     * Gets the human-readable display label or filename.
+     *
+     * <p>May differ from the filename extracted from the URI if the user provided a custom title.
+     * Used in UI lists, search snippets, and breadcrumbs.</p>
+     *
+     * @return human-readable title or filename
+     */
+    public String getDisplayName() {
+        return displayName;
+    }
 
-    public Long getLastModifiedAt() { return lastModifiedAt; }
-    public void setLastModifiedAt(Long lastModifiedAt) { this.lastModifiedAt = lastModifiedAt; }
+    /**
+     * Sets the human-readable display label or filename.
+     *
+     * @param displayName display label
+     */
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
 
-    public Long getLastIndexedAt() { return lastIndexedAt; }
-    public void setLastIndexedAt(Long lastIndexedAt) { this.lastIndexedAt = lastIndexedAt; }
+    /**
+     * Gets the MIME type of the referenced file.
+     *
+     * <p>Guides parser selection during text extraction (e.g., "application/pdf" vs "text/plain").
+     * May be null if undetermined or if the content provider did not declare a MIME type.</p>
+     *
+     * @return MIME type string or null
+     */
+    public String getMimeType() {
+        return mimeType;
+    }
 
-    public String getContentFingerprint() { return contentFingerprint; }
-    public void setContentFingerprint(String contentFingerprint) { this.contentFingerprint = contentFingerprint; }
+    /**
+     * Sets the MIME type of the referenced file.
+     *
+     * @param mimeType MIME type string or null
+     */
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
 
-    public AccessState getAccessState() { return accessState; }
-    public void setAccessState(AccessState accessState) { this.accessState = accessState; }
+    /**
+     * Gets the size of the file in bytes at the time of last indexing.
+     *
+     * <p>Used alongside {@link #getLastModifiedAt()} and {@link #getContentFingerprint()} for
+     * lightweight change detection without reading the entire stream.</p>
+     *
+     * @return size in bytes, or null if unknown
+     */
+    public Long getSizeBytes() {
+        return sizeBytes;
+    }
 
-    public Long getLastVerifiedAt() { return lastVerifiedAt; }
-    public void setLastVerifiedAt(Long lastVerifiedAt) { this.lastVerifiedAt = lastVerifiedAt; }
+    /**
+     * Sets the size of the file in bytes.
+     *
+     * @param sizeBytes size in bytes, or null
+     */
+    public void setSizeBytes(Long sizeBytes) {
+        this.sizeBytes = sizeBytes;
+    }
 
-    public IndexingStatus getIndexingStatus() { return indexingStatus; }
-    public void setIndexingStatus(IndexingStatus indexingStatus) { this.indexingStatus = indexingStatus; }
+    /**
+     * Gets the filesystem last-modified timestamp reported by the content provider or OS.
+     *
+     * @return last modified epoch milliseconds, or null if unavailable
+     */
+    public Long getLastModifiedAt() {
+        return lastModifiedAt;
+    }
 
-    public boolean isExcluded() { return excluded; }
-    public void setExcluded(boolean excluded) { this.excluded = excluded; }
+    /**
+     * Sets the filesystem last-modified timestamp.
+     *
+     * @param lastModifiedAt last modified epoch milliseconds, or null
+     */
+    public void setLastModifiedAt(Long lastModifiedAt) {
+        this.lastModifiedAt = lastModifiedAt;
+    }
 
-    /** @return true if the file is currently accessible and indexed */
+    /**
+     * Gets the timestamp when this file was last successfully indexed into text chunks.
+     *
+     * @return UTC epoch milliseconds, or null if indexing has never completed
+     */
+    public Long getLastIndexedAt() {
+        return lastIndexedAt;
+    }
+
+    /**
+     * Sets the timestamp when this file was last successfully indexed.
+     *
+     * @param lastIndexedAt UTC epoch milliseconds, or null
+     */
+    public void setLastIndexedAt(Long lastIndexedAt) {
+        this.lastIndexedAt = lastIndexedAt;
+    }
+
+    /**
+     * Gets the cryptographic content fingerprint (e.g., hex-encoded SHA-256) of the document.
+     *
+     * <p><b>Algorithm & Tradeoffs:</b> A SHA-256 hash guarantees detection of any altered content
+     * even if timestamps or file sizes match. However, computing the hash requires reading the full
+     * file, which can be expensive on battery and I/O. Therefore, the system only recomputes the
+     * hash when size or last-modified checks indicate potential changes.</p>
+     *
+     * @return hex-encoded hash string, or null if not yet computed
+     */
+    public String getContentFingerprint() {
+        return contentFingerprint;
+    }
+
+    /**
+     * Sets the cryptographic content fingerprint.
+     *
+     * @param contentFingerprint hex-encoded hash string, or null
+     */
+    public void setContentFingerprint(String contentFingerprint) {
+        this.contentFingerprint = contentFingerprint;
+    }
+
+    /**
+     * Gets the accessibility state of the file from the application's perspective.
+     *
+     * <p><b>Honesty Principle (Section 25.3):</b> The application must never report a file as "deleted"
+     * when it is merely {@link AccessState#TEMPORARILY_INACCESSIBLE} (e.g. unmounted SD card) or
+     * {@link AccessState#PERMISSION_REVOKED}. Honest states prevent false assumptions and data loss.</p>
+     *
+     * @return current {@link AccessState}
+     */
+    public AccessState getAccessState() {
+        return accessState;
+    }
+
+    /**
+     * Sets the accessibility state of the file.
+     *
+     * @param accessState current {@link AccessState}
+     */
+    public void setAccessState(AccessState accessState) {
+        this.accessState = accessState;
+    }
+
+    /**
+     * Gets the timestamp when file accessibility was last actively verified.
+     *
+     * @return UTC epoch milliseconds, or null if never verified
+     */
+    public Long getLastVerifiedAt() {
+        return lastVerifiedAt;
+    }
+
+    /**
+     * Sets the timestamp when file accessibility was last actively verified.
+     *
+     * @param lastVerifiedAt UTC epoch milliseconds, or null
+     */
+    public void setLastVerifiedAt(Long lastVerifiedAt) {
+        this.lastVerifiedAt = lastVerifiedAt;
+    }
+
+    /**
+     * Gets the document indexing lifecycle status.
+     *
+     * @return current {@link IndexingStatus}
+     */
+    public IndexingStatus getIndexingStatus() {
+        return indexingStatus;
+    }
+
+    /**
+     * Sets the document indexing lifecycle status.
+     *
+     * @param indexingStatus current {@link IndexingStatus}
+     */
+    public void setIndexingStatus(IndexingStatus indexingStatus) {
+        this.indexingStatus = indexingStatus;
+    }
+
+    /**
+     * Returns whether this document has been explicitly excluded from indexing.
+     *
+     * <p>Files may be excluded by user action or by security filters identifying sensitive directories
+     * (e.g., SSH keys, credential caches, Section 16.3). Excluded files are never scanned by background jobs.</p>
+     *
+     * @return true if excluded from background indexing; false otherwise
+     */
+    public boolean isExcluded() {
+        return excluded;
+    }
+
+    /**
+     * Sets whether this document is excluded from indexing.
+     *
+     * @param excluded true to exclude; false otherwise
+     */
+    public void setExcluded(boolean excluded) {
+        this.excluded = excluded;
+    }
+
+    /**
+     * Determines whether this file is fully prepared and eligible for retrieval queries.
+     *
+     * <p><b>Contract:</b> A document can only contribute to search results if its backing storage is
+     * currently {@link AccessState#ACCESSIBLE} and its content is completely {@link IndexingStatus#INDEXED}.
+     * Stale, missing, or pending files are excluded to maintain search result honesty.</p>
+     *
+     * @return true if the file is accessible and indexed; false otherwise
+     */
     public boolean isReadyToSearch() {
         return AccessState.ACCESSIBLE.equals(accessState)
                 && IndexingStatus.INDEXED.equals(indexingStatus);

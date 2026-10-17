@@ -59,4 +59,8 @@
 
     <color name="badge_reminder_bg">#3E1605</color>
     <color name="badge_reminder_text">#FED7AA</color>
+
+    <!-- Semantic Text Colors -->
+    <color name="mint_primary">@color/md_theme_dark_primary</color>
+    <color name="on_surface_variant_light">@color/md_theme_dark_onSurfaceVariant</color>
 </resources>

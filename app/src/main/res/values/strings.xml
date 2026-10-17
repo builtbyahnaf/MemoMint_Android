@@ -28,4 +28,7 @@
     <string name="msg_memory_restored">Memory restored</string>
     <string name="msg_memory_confirmed">Location confirmed</string>
     <string name="error_empty_text">Please enter some text to remember</string>
+    <string name="search_hint">Search memories (e.g. backup cable)</string>
+    <string name="search_no_results">No matching memories found</string>
+    <string name="search_no_results_subtitle">Try different keywords or check your spelling</string>
 </resources>

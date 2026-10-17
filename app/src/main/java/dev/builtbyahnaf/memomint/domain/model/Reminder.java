@@ -117,34 +117,195 @@ public class Reminder {
     // Getters & setters
     // -------------------------------------------------------------------------
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    /**
+     * Gets the stable UUID identifier for this reminder.
+     *
+     * @return stable UUID string
+     */
+    public String getId() {
+        return id;
+    }
 
-    public String getMemoryId() { return memoryId; }
-    public void setMemoryId(String memoryId) { this.memoryId = memoryId; }
+    /**
+     * Sets the stable UUID identifier for this reminder.
+     *
+     * @param id stable UUID string
+     */
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    /**
+     * Gets the UUID of the associated memory, if any.
+     *
+     * <p>Reminders may be linked to a specific memory (e.g., "Check passport expiry" linked to
+     * a memory recording passport location) or may stand alone. When non-null, a corresponding
+     * {@link MemoryRelation} with {@link RelationType#ASSOCIATED_WITH_REMINDER} should also be maintained.</p>
+     *
+     * @return foreign key UUID matching {@link Memory#getId()}, or null if standalone
+     */
+    public String getMemoryId() {
+        return memoryId;
+    }
 
-    public long getScheduledAt() { return scheduledAt; }
-    public void setScheduledAt(long scheduledAt) { this.scheduledAt = scheduledAt; }
+    /**
+     * Sets the UUID of the associated memory.
+     *
+     * @param memoryId foreign key UUID, or null
+     */
+    public void setMemoryId(String memoryId) {
+        this.memoryId = memoryId;
+    }
 
-    public String getTimeZoneId() { return timeZoneId; }
-    public void setTimeZoneId(String timeZoneId) { this.timeZoneId = timeZoneId; }
+    /**
+     * Gets the short title displayed in the system notification and reminder list.
+     *
+     * @return notification title text; never null for valid records
+     */
+    public String getTitle() {
+        return title;
+    }
 
-    public ReminderStatus getStatus() { return status; }
-    public void setStatus(ReminderStatus status) { this.status = status; }
+    /**
+     * Sets the short title displayed in the notification.
+     *
+     * @param title notification title text
+     */
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public long getCreatedAt() { return createdAt; }
-    public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
+    /**
+     * Gets the UTC epoch milliseconds when this reminder is intended to fire.
+     *
+     * <p>When a reminder is snoozed, this timestamp is updated to the new target fire time.</p>
+     *
+     * @return intended fire time in UTC epoch milliseconds
+     */
+    public long getScheduledAt() {
+        return scheduledAt;
+    }
 
-    public Long getCompletedAt() { return completedAt; }
-    public void setCompletedAt(Long completedAt) { this.completedAt = completedAt; }
+    /**
+     * Sets the UTC epoch milliseconds when this reminder is intended to fire.
+     *
+     * @param scheduledAt target fire time in UTC epoch milliseconds
+     */
+    public void setScheduledAt(long scheduledAt) {
+        this.scheduledAt = scheduledAt;
+    }
 
-    public Long getLastScheduledAt() { return lastScheduledAt; }
-    public void setLastScheduledAt(Long lastScheduledAt) { this.lastScheduledAt = lastScheduledAt; }
+    /**
+     * Gets the IANA time zone identifier in which {@link #getScheduledAt()} was originally formulated.
+     *
+     * <p><b>Daylight Saving Time (DST) & Time Zone Shifts:</b> Storing the IANA zone string
+     * (e.g. "Asia/Dhaka", "America/New_York") enables the application to detect whether a device
+     * has crossed time zones or undergone a DST shift between creation and firing, allowing correct
+     * re-evaluation of local wall-clock intentions.</p>
+     *
+     * @return IANA time zone identifier string, or null for legacy records
+     */
+    public String getTimeZoneId() {
+        return timeZoneId;
+    }
 
-    /** @return true if this reminder is still waiting to fire */
+    /**
+     * Sets the IANA time zone identifier.
+     *
+     * @param timeZoneId IANA time zone string
+     */
+    public void setTimeZoneId(String timeZoneId) {
+        this.timeZoneId = timeZoneId;
+    }
+
+    /**
+     * Gets the current lifecycle state of this reminder.
+     *
+     * @return current {@link ReminderStatus}
+     */
+    public ReminderStatus getStatus() {
+        return status;
+    }
+
+    /**
+     * Sets the current lifecycle state of this reminder.
+     *
+     * @param status the {@link ReminderStatus}
+     */
+    public void setStatus(ReminderStatus status) {
+        this.status = status;
+    }
+
+    /**
+     * Gets the timestamp when this reminder record was created.
+     *
+     * @return UTC epoch milliseconds
+     */
+    public long getCreatedAt() {
+        return createdAt;
+    }
+
+    /**
+     * Sets the creation timestamp.
+     *
+     * @param createdAt UTC epoch milliseconds
+     */
+    public void setCreatedAt(long createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    /**
+     * Gets the timestamp when the user marked this reminder as completed.
+     *
+     * <p>Null while active or snoozed; assigned atomically when transitioning to
+     * {@link ReminderStatus#COMPLETED}.</p>
+     *
+     * @return completion UTC epoch milliseconds, or null
+     */
+    public Long getCompletedAt() {
+        return completedAt;
+    }
+
+    /**
+     * Sets the completion timestamp.
+     *
+     * @param completedAt completion UTC epoch milliseconds, or null
+     */
+    public void setCompletedAt(Long completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    /**
+     * Gets the timestamp when the reminder was last registered with Android's platform scheduling API.
+     *
+     * <p><b>Platform vs Intent Separation (Section 14.3):</b> {@link #getScheduledAt()} represents the
+     * user's intended fire time. {@link #getLastScheduledAt()} records when WorkManager or AlarmManager
+     * was actually invoked to schedule the alarm. On device reboot, reminders where {@code lastScheduledAt}
+     * is stale or missing must be re-registered with the platform.</p>
+     *
+     * @return platform registration UTC epoch milliseconds, or null if never scheduled
+     */
+    public Long getLastScheduledAt() {
+        return lastScheduledAt;
+    }
+
+    /**
+     * Sets the platform registration timestamp.
+     *
+     * @param lastScheduledAt platform registration UTC epoch milliseconds, or null
+     */
+    public void setLastScheduledAt(Long lastScheduledAt) {
+        this.lastScheduledAt = lastScheduledAt;
+    }
+
+    /**
+     * Checks if this reminder is active and awaiting dispatch.
+     *
+     * <p><b>Algorithm:</b> A reminder is active if its status is either {@link ReminderStatus#ACTIVE}
+     * or {@link ReminderStatus#SNOOZED}. Completed, dismissed, or failed reminders are inactive.</p>
+     *
+     * @return true if the reminder is active or snoozed; false otherwise
+     */
     public boolean isActive() {
         return ReminderStatus.ACTIVE.equals(status) || ReminderStatus.SNOOZED.equals(status);
     }

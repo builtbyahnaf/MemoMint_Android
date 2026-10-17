@@ -164,6 +164,7 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
         db.beginTransaction();
         try {
             createVersion1Schema(db);
+            createVersion2Schema(db);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -194,16 +195,10 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // Each case migrates from 'case N' to version N+1.
         // Fall-through is intentional to chain multiple migrations.
-        // Currently, there is only version 1, so no upgrade paths exist yet.
         switch (oldVersion) {
-            // Version 1 is the initial schema; no upgrade from a prior version exists yet.
-            // Future migrations will be added here as:
-            //   case 1:
-            //       applyMigrationV1toV2(db);
-            //       // fall through
-            //   case 2:
-            //       applyMigrationV2toV3(db);
-            //       // fall through
+            case 1:
+                applyMigrationV1toV2(db);
+                // fall through
             default:
                 break;
         }
@@ -258,5 +253,37 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
         // ---- Index jobs (references file_references by convention, no FK cascade) ----
         db.execSQL(DatabaseConstants.Sql.CREATE_INDEX_JOBS);
         db.execSQL(DatabaseConstants.Sql.CREATE_IDX_INDEX_JOBS_SOURCE);
+    }
+
+    /**
+     * Executes all DDL statements needed to create the Version 2 schema extensions:
+     * the FTS5 full-text search table and automatic synchronization triggers.
+     *
+     * @param db the database in which to create the schema
+     */
+    private void createVersion2Schema(SQLiteDatabase db) {
+        db.execSQL(DatabaseConstants.Sql.CREATE_MEMORIES_FTS);
+        db.execSQL(DatabaseConstants.Sql.CREATE_TRIGGER_MEMORIES_AI);
+        db.execSQL(DatabaseConstants.Sql.CREATE_TRIGGER_MEMORIES_AD);
+        db.execSQL(DatabaseConstants.Sql.CREATE_TRIGGER_MEMORIES_AU);
+    }
+
+    /**
+     * Applies the migration from Version 1 to Version 2.
+     *
+     * <p>Creates the FTS5 virtual table and synchronization triggers, then populates
+     * the index with all existing rows from {@code memories}.</p>
+     *
+     * @param db the database being upgraded
+     */
+    private void applyMigrationV1toV2(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            createVersion2Schema(db);
+            db.execSQL(DatabaseConstants.Sql.POPULATE_MEMORIES_FTS);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
     }
 }

@@ -107,35 +107,128 @@ public class ContextRecord {
     // Getters & setters
     // -------------------------------------------------------------------------
 
+    /**
+     * Returns the stable UUID of this context record.
+     *
+     * @return unique identifier string
+     */
     public String getId() { return id; }
+
+    /**
+     * Sets the UUID identifier for this context record.
+     *
+     * @param id stable UUID string
+     */
     public void setId(String id) { this.id = id; }
 
+    /**
+     * Returns the UUID of the parent Memory owning this context.
+     *
+     * @return owning memory's UUID
+     */
     public String getMemoryId() { return memoryId; }
+
+    /**
+     * Sets the owning memory UUID reference.
+     *
+     * @param memoryId parent memory's UUID
+     */
     public void setMemoryId(String memoryId) { this.memoryId = memoryId; }
 
+    /**
+     * Returns the category of derived content (e.g. SUMMARY, KEYWORDS, ENTITIES, DOCUMENT_CONTENT).
+     *
+     * @return context type enum
+     */
     public ContextType getContextType() { return contextType; }
+
+    /**
+     * Sets the category of derived content.
+     *
+     * @param contextType classification enum
+     */
     public void setContextType(ContextType contextType) { this.contextType = contextType; }
 
     /**
-     * Returns the derived content string.
-     * Only valid when {@code generationStatus == DONE}; may be null otherwise.
+     * Returns the derived content string (keywords, entity structure, summary).
+     *
+     * <p><b>Invariant:</b> This string represents derived information only. It must never be
+     * used to overwrite {@link Memory#getOriginalText()}. Only valid when
+     * {@link #getGenerationStatus()} is {@link GenerationStatus#DONE}.</p>
+     *
+     * @return derived searchable text, or null if generation is pending or failed
      */
     public String getContent() { return content; }
+
+    /**
+     * Sets the derived textual content.
+     *
+     * @param content derived text string
+     */
     public void setContent(String content) { this.content = content; }
 
+    /**
+     * Returns the generator logic version that created this record.
+     * Used to identify and regenerate outdated records when extraction heuristics improve.
+     *
+     * @return integer version counter
+     */
     public int getGeneratorVersion() { return generatorVersion; }
+
+    /**
+     * Sets the generator logic version number.
+     *
+     * @param generatorVersion integer version number
+     */
     public void setGeneratorVersion(int generatorVersion) { this.generatorVersion = generatorVersion; }
 
+    /**
+     * Returns the creation timestamp in UTC epoch milliseconds.
+     *
+     * @return creation epoch ms
+     */
     public long getCreatedAt() { return createdAt; }
+
+    /**
+     * Sets the creation timestamp.
+     *
+     * @param createdAt UTC epoch milliseconds
+     */
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
 
+    /**
+     * Returns the last modification/regeneration timestamp in UTC epoch milliseconds.
+     *
+     * @return last updated epoch ms
+     */
     public long getUpdatedAt() { return updatedAt; }
+
+    /**
+     * Sets the last update timestamp.
+     *
+     * @param updatedAt UTC epoch milliseconds
+     */
     public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
 
+    /**
+     * Returns the generation lifecycle state (PENDING, DONE, FAILED).
+     *
+     * @return generation status enum
+     */
     public GenerationStatus getGenerationStatus() { return generationStatus; }
+
+    /**
+     * Sets the current generation lifecycle status.
+     *
+     * @param generationStatus state enum
+     */
     public void setGenerationStatus(GenerationStatus generationStatus) { this.generationStatus = generationStatus; }
 
-    /** @return true if this context record has usable, searchable content */
+    /**
+     * Evaluates whether this context record contains valid, searchable content.
+     *
+     * @return true if status is DONE and content is non-null; false otherwise
+     */
     public boolean isUsable() {
         return GenerationStatus.DONE.equals(generationStatus) && content != null;
     }

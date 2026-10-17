@@ -53,8 +53,8 @@ public class MemoryServiceTest {
         // Uses the synchronous/test constructor with direct executor
         service = new MemoryService(
                 fakeRepository,
-                Runnable::run, // direct executor runs synchronously
-                new android.os.Handler(android.os.Looper.getMainLooper())
+                Runnable::run, // direct background executor
+                Runnable::run  // direct callback executor
         );
     }
 

@@ -189,49 +189,139 @@ public class Memory {
     // Setters
     // -------------------------------------------------------------------------
 
-    public void setId(String id) { this.id = id; }
+    // -------------------------------------------------------------------------
+    // Setters
+    // -------------------------------------------------------------------------
 
-    public void setType(MemoryType type) { this.type = type; }
+    /**
+     * Sets the unique stable identifier (UUID) for this memory.
+     *
+     * <p><b>Design Rule:</b> Typically only invoked by repository mappers or creation services.
+     * Must remain immutable once stored in SQLite.</p>
+     *
+     * @param id stable UUID string
+     */
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    /**
+     * Sets the semantic classification of this memory.
+     *
+     * @param type the {@link MemoryType} classification
+     */
+    public void setType(MemoryType type) {
+        this.type = type;
+    }
 
     /**
      * Updates the original text.
      *
-     * <p><b>WARNING:</b> Only call this in response to an explicit user edit.
-     * Background jobs and context generation must never call this method.</p>
+     * <p><b>INVARIANT (FR-03, Section 25.7):</b> Only call this method in direct response to an explicit
+     * user edit action. Background indexing jobs, context generation pipelines, and automated summarizers
+     * must NEVER mutate this field, preserving the user's verbatim input as absolute truth.</p>
      *
      * @param originalText the new original text; must not be null
      */
-    public void setOriginalText(String originalText) { this.originalText = originalText; }
+    public void setOriginalText(String originalText) {
+        this.originalText = originalText;
+    }
 
-    public void setTitle(String title) { this.title = title; }
+    /**
+     * Sets an optional short display title for UI list views and notifications.
+     *
+     * @param title user-defined or derived display title; may be null
+     */
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
+    /**
+     * Sets the initial creation timestamp in UTC epoch milliseconds.
+     *
+     * @param createdAt UTC epoch milliseconds
+     */
+    public void setCreatedAt(long createdAt) {
+        this.createdAt = createdAt;
+    }
 
-    public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
+    /**
+     * Sets the last-modified timestamp in UTC epoch milliseconds.
+     *
+     * <p>Must be refreshed whenever any property of this memory (including original text, title, or status)
+     * is modified.</p>
+     *
+     * @param updatedAt UTC epoch milliseconds
+     */
+    public void setUpdatedAt(long updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
-    public void setSourceType(SourceType sourceType) { this.sourceType = sourceType; }
+    /**
+     * Sets how this memory was captured or imported into MemoMint.
+     *
+     * @param sourceType the {@link SourceType} capture origin
+     */
+    public void setSourceType(SourceType sourceType) {
+        this.sourceType = sourceType;
+    }
 
-    public void setSourceId(String sourceId) { this.sourceId = sourceId; }
+    /**
+     * Sets the optional provenance reference identifier for the origin source (e.g. package name, batch ID).
+     *
+     * @param sourceId external or session identifier; may be null
+     */
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
 
-    public void setStatus(MemoryStatus status) { this.status = status; }
+    /**
+     * Sets the current lifecycle state of this memory.
+     *
+     * <p>Transitions between {@link MemoryStatus#ACTIVE}, {@link MemoryStatus#ARCHIVED},
+     * and {@link MemoryStatus#DELETED}.</p>
+     *
+     * @param status the new {@link MemoryStatus}
+     */
+    public void setStatus(MemoryStatus status) {
+        this.status = status;
+    }
 
-    public void setLastConfirmedAt(Long lastConfirmedAt) { this.lastConfirmedAt = lastConfirmedAt; }
+    /**
+     * Sets the timestamp when the user last explicitly verified that this memory remains accurate.
+     *
+     * <p>Resets the decay timeline used by the freshness and confirmation engine.</p>
+     *
+     * @param lastConfirmedAt UTC epoch milliseconds, or null
+     */
+    public void setLastConfirmedAt(Long lastConfirmedAt) {
+        this.lastConfirmedAt = lastConfirmedAt;
+    }
 
     // -------------------------------------------------------------------------
     // Utility
     // -------------------------------------------------------------------------
 
     /**
-     * Returns true if this memory is in the ACTIVE state.
-     * Convenience for use in lists and adapters; not a substitute for querying the DB.
+     * Checks if this memory is currently active and eligible for standard UI display and search queries.
+     *
+     * <p><b>Algorithm:</b> Evaluates {@code MemoryStatus.ACTIVE.equals(status)}. Convenience helper
+     * for in-memory list filtering; database queries should filter directly using
+     * {@link dev.builtbyahnaf.memomint.data.repository.MemoryRepository#findByStatus(MemoryStatus)}.</p>
+     *
+     * @return true if the memory is in the ACTIVE state; false otherwise
      */
     public boolean isActive() {
         return MemoryStatus.ACTIVE.equals(status);
     }
 
     /**
-     * Returns true if this memory has been soft-deleted.
-     * DELETED memories must be excluded from search results immediately upon setting this status.
+     * Checks if this memory has been soft-deleted.
+     *
+     * <p><b>Requirement:</b> Soft-deleted memories are immediately hidden from standard search results
+     * and list screens while awaiting recovery or background cascade purge.</p>
+     *
+     * @return true if status is {@link MemoryStatus#DELETED}; false otherwise
      */
     public boolean isDeleted() {
         return MemoryStatus.DELETED.equals(status);
@@ -247,6 +337,16 @@ public class Memory {
                 + '}';
     }
 
+    /**
+     * Evaluates entity equality based strictly on stable UUID identity.
+     *
+     * <p><b>Tradeoff:</b> In accordance with domain entity design principles, two Memory instances
+     * representing the same persistent entity with identical {@code id} are considered equal, even if
+     * non-identity fields (such as {@code originalText} or {@code updatedAt}) differ across transient states.</p>
+     *
+     * @param o candidate object
+     * @return true if both objects represent the same memory UUID; false otherwise
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -255,6 +355,11 @@ public class Memory {
         return id != null && id.equals(other.id);
     }
 
+    /**
+     * Generates a hash code derived from the stable UUID identifier.
+     *
+     * @return integer hash code
+     */
     @Override
     public int hashCode() {
         return id != null ? id.hashCode() : 0;

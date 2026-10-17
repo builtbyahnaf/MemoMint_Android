@@ -105,29 +105,161 @@ public class IndexJob {
     // Getters & setters
     // -------------------------------------------------------------------------
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    /**
+     * Gets the stable UUID identifier for this indexing job.
+     *
+     * @return stable UUID string
+     */
+    public String getId() {
+        return id;
+    }
 
-    public String getSourceId() { return sourceId; }
-    public void setSourceId(String sourceId) { this.sourceId = sourceId; }
+    /**
+     * Sets the stable UUID identifier for this indexing job.
+     *
+     * @param id stable UUID string
+     */
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    /**
+     * Gets the UUID of the {@link FileReference} being processed.
+     *
+     * @return foreign key UUID matching {@link FileReference#getId()}
+     */
+    public String getSourceId() {
+        return sourceId;
+    }
 
-    /** @return progress in [0, 100] */
-    public int getProgress() { return progress; }
-    public void setProgress(int progress) { this.progress = progress; }
+    /**
+     * Sets the UUID of the {@link FileReference} being processed.
+     *
+     * @param sourceId foreign key UUID
+     */
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
 
-    public Long getStartedAt() { return startedAt; }
-    public void setStartedAt(Long startedAt) { this.startedAt = startedAt; }
+    /**
+     * Gets the current execution lifecycle status string.
+     *
+     * <p>Permitted values are defined in {@code DatabaseConstants.IndexJobStatus}:
+     * <ul>
+     *   <li>{@code "PENDING"}: Job enqueued but not yet executing.</li>
+     *   <li>{@code "RUNNING"}: Worker currently parsing or indexing file chunks.</li>
+     *   <li>{@code "DONE"}: Terminal success state.</li>
+     *   <li>{@code "FAILED"}: Terminal error state; check {@link #getErrorCode()}.</li>
+     *   <li>{@code "CANCELLED"}: Terminal aborted state (user cancelled or file removed).</li>
+     * </ul>
+     *
+     * @return current status string
+     */
+    public String getStatus() {
+        return status;
+    }
 
-    public long getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
+    /**
+     * Sets the execution lifecycle status string.
+     *
+     * @param status status string from {@code DatabaseConstants.IndexJobStatus}
+     */
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-    public String getErrorCode() { return errorCode; }
-    public void setErrorCode(String errorCode) { this.errorCode = errorCode; }
+    /**
+     * Gets the estimated completion progress as a percentage.
+     *
+     * <p><b>Range & Calculation:</b> Integer in the interval [0, 100]. For multi-page documents (PDFs)
+     * or large text files, progress is computed as {@code (processedChunks / totalEstimatedChunks) * 100}.
+     * 0 indicates unstarted or indeterminate; 100 indicates complete.</p>
+     *
+     * @return progress percentage in [0, 100]
+     */
+    public int getProgress() {
+        return progress;
+    }
 
-    /** @return true if this job is in a terminal state (DONE, FAILED, or CANCELLED) */
+    /**
+     * Sets the progress percentage.
+     *
+     * @param progress integer in [0, 100]
+     */
+    public void setProgress(int progress) {
+        this.progress = progress;
+    }
+
+    /**
+     * Gets the timestamp when execution commenced.
+     *
+     * <p><b>Crash Detection:</b> If a job remains in {@code "RUNNING"} status across process restarts
+     * without progress updates for longer than a timeout threshold, this timestamp allows background
+     * recovery logic to detect the crash and reschedule the job as {@code "PENDING"}.</p>
+     *
+     * @return start timestamp in UTC epoch milliseconds, or null if not yet started
+     */
+    public Long getStartedAt() {
+        return startedAt;
+    }
+
+    /**
+     * Sets the start timestamp.
+     *
+     * @param startedAt UTC epoch milliseconds, or null
+     */
+    public void setStartedAt(Long startedAt) {
+        this.startedAt = startedAt;
+    }
+
+    /**
+     * Gets the timestamp of the most recent status or progress heartbeat.
+     *
+     * @return UTC epoch milliseconds
+     */
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * Sets the timestamp of the most recent update.
+     *
+     * @param updatedAt UTC epoch milliseconds
+     */
+    public void setUpdatedAt(long updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    /**
+     * Gets the machine-readable error code if the job failed.
+     *
+     * <p><b>Privacy Rule (Section 16.1, Section 25.7):</b> Error codes must be short, categorical
+     * constants (e.g., "PARSE_FAILURE", "PERMISSION_DENIED", "OUT_OF_MEMORY"). They must NEVER contain
+     * document contents, user memory text, or private file names.</p>
+     *
+     * @return error code string, or null if no failure occurred
+     */
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    /**
+     * Sets the machine-readable error code.
+     *
+     * @param errorCode privacy-safe error identifier, or null
+     */
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    /**
+     * Checks if this job has reached a terminal execution state from which no further transitions occur.
+     *
+     * <p><b>Algorithm:</b> Tests whether {@code status} equals "DONE", "FAILED", or "CANCELLED".
+     * Terminal jobs are not re-executed by background workers.</p>
+     *
+     * @return true if the job is finished, failed, or cancelled; false if pending or actively running
+     */
     public boolean isTerminal() {
         return "DONE".equals(status) || "FAILED".equals(status) || "CANCELLED".equals(status);
     }

@@ -5,6 +5,7 @@ import android.os.Looper;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -86,8 +87,8 @@ public class MemoryService {
     // -------------------------------------------------------------------------
 
     private final MemoryRepository repository;
-    private final ExecutorService backgroundExecutor;
-    private final Handler mainHandler;
+    private final Executor backgroundExecutor;
+    private final Executor callbackExecutor;
 
     /**
      * Default constructor initializing standard background executor and main thread handler.
@@ -95,29 +96,40 @@ public class MemoryService {
      * @param repository the data repository backing memory persistence; must not be null
      */
     public MemoryService(MemoryRepository repository) {
-        this(repository, Executors.newSingleThreadExecutor(), new Handler(Looper.getMainLooper()));
+        this(repository, Executors.newSingleThreadExecutor(), new Handler(Looper.getMainLooper())::post);
     }
 
     /**
-     * Test-friendly constructor allowing injection of custom executors and handlers (e.g. for synchronous tests).
+     * Constructor allowing injection of custom background executor and main thread Handler.
      *
      * @param repository         the memory repository implementation
      * @param backgroundExecutor executor for running database queries off the UI thread
      * @param mainHandler        handler for posting callbacks back to the main UI thread
      */
-    public MemoryService(MemoryRepository repository, ExecutorService backgroundExecutor, Handler mainHandler) {
+    public MemoryService(MemoryRepository repository, Executor backgroundExecutor, Handler mainHandler) {
+        this(repository, backgroundExecutor, mainHandler != null ? mainHandler::post : null);
+    }
+
+    /**
+     * Test-friendly constructor allowing injection of custom executors (e.g. direct executors for synchronous tests).
+     *
+     * @param repository         the memory repository implementation
+     * @param backgroundExecutor executor for running database queries off the UI thread
+     * @param callbackExecutor   executor for delivering callbacks back to the caller
+     */
+    public MemoryService(MemoryRepository repository, Executor backgroundExecutor, Executor callbackExecutor) {
         if (repository == null) {
             throw new IllegalArgumentException("repository must not be null");
         }
         if (backgroundExecutor == null) {
             throw new IllegalArgumentException("backgroundExecutor must not be null");
         }
-        if (mainHandler == null) {
-            throw new IllegalArgumentException("mainHandler must not be null");
+        if (callbackExecutor == null) {
+            throw new IllegalArgumentException("callbackExecutor must not be null");
         }
         this.repository = repository;
         this.backgroundExecutor = backgroundExecutor;
-        this.mainHandler = mainHandler;
+        this.callbackExecutor = callbackExecutor;
     }
 
     // =========================================================================
@@ -450,13 +462,13 @@ public class MemoryService {
 
     private <T> void postSuccess(Callback<T> callback, T data) {
         if (callback != null) {
-            mainHandler.post(() -> callback.onSuccess(data));
+            callbackExecutor.execute(() -> callback.onSuccess(data));
         }
     }
 
     private <T> void postError(Callback<T> callback, Throwable t) {
         if (callback != null) {
-            mainHandler.post(() -> callback.onError(t));
+            callbackExecutor.execute(() -> callback.onError(t));
         }
     }
 }

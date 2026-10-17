@@ -5,13 +5,12 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import androidx.test.core.app.ApplicationProvider;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 import java.util.List;
@@ -75,7 +74,7 @@ public class MemoMintDatabaseTest {
      */
     @Before
     public void setUp() {
-        Context context = ApplicationProvider.getApplicationContext();
+        Context context = RuntimeEnvironment.getApplication();
         dbHelper = new MemoMintDatabase(context, /* in-memory name= */ null);
         repository = new MemoryRepositoryImpl(dbHelper);
         db = dbHelper.getWritableDatabase();

@@ -69,16 +69,62 @@ public class Entity {
     // Getters & setters
     // -------------------------------------------------------------------------
 
+    /**
+     * Returns the stable UUID of this canonical entity.
+     *
+     * @return unique identifier string
+     */
     public String getId() { return id; }
+
+    /**
+     * Sets the unique UUID identifier for this entity.
+     *
+     * @param id stable UUID string
+     */
     public void setId(String id) { this.id = id; }
 
+    /**
+     * Returns the canonical, normalized form of the concept label.
+     * Used by retrieval algorithms for synonym cluster matching (e.g. "earbuds").
+     *
+     * @return normalized concept string
+     */
     public String getCanonicalLabel() { return canonicalLabel; }
+
+    /**
+     * Sets the canonical concept label.
+     *
+     * @param canonicalLabel normalized concept string
+     */
     public void setCanonicalLabel(String canonicalLabel) { this.canonicalLabel = canonicalLabel; }
 
+    /**
+     * Returns the conceptual classification of this entity (e.g. ITEM, LOCATION, PERSON, TOPIC).
+     *
+     * @return entity type enum
+     */
     public EntityType getEntityType() { return entityType; }
+
+    /**
+     * Sets the conceptual classification of this entity.
+     *
+     * @param entityType classification enum
+     */
     public void setEntityType(EntityType entityType) { this.entityType = entityType; }
 
+    /**
+     * Returns the raw user phrasing that initially triggered creation of this entity.
+     * Preserved separately to prevent irreversible semantic distortion.
+     *
+     * @return verbatim original surface label
+     */
     public String getOriginalLabel() { return originalLabel; }
+
+    /**
+     * Sets the verbatim original phrasing label.
+     *
+     * @param originalLabel raw surface string
+     */
     public void setOriginalLabel(String originalLabel) { this.originalLabel = originalLabel; }
 
     @Override

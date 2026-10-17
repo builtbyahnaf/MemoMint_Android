@@ -125,35 +125,205 @@ public class MemoryRelation {
     // Getters & setters
     // -------------------------------------------------------------------------
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    /**
+     * Gets the unique stable identifier (UUID) for this relation record.
+     *
+     * @return stable UUID string
+     */
+    public String getId() {
+        return id;
+    }
 
-    public String getSourceType() { return sourceType; }
-    public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+    /**
+     * Sets the unique stable identifier (UUID) for this relation record.
+     *
+     * @param id stable UUID string
+     */
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getSourceId() { return sourceId; }
-    public void setSourceId(String sourceId) { this.sourceId = sourceId; }
+    /**
+     * Gets the polymorphic type discriminator for the relation source.
+     *
+     * <p>Must be one of the constants defined in {@code DatabaseConstants.RelationParty}:
+     * {@code "MEMORY"} or {@code "ENTITY"}. For instance, in a {@link RelationType#STORED_AT}
+     * relationship where a memory describes the location of an entity, the source is "MEMORY".</p>
+     *
+     * @return source type discriminator string
+     */
+    public String getSourceType() {
+        return sourceType;
+    }
 
-    public RelationType getRelationType() { return relationType; }
-    public void setRelationType(RelationType relationType) { this.relationType = relationType; }
+    /**
+     * Sets the polymorphic type discriminator for the relation source.
+     *
+     * @param sourceType source type discriminator string ("MEMORY" or "ENTITY")
+     */
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
 
-    public String getTargetType() { return targetType; }
-    public void setTargetType(String targetType) { this.targetType = targetType; }
+    /**
+     * Gets the UUID of the source record.
+     *
+     * @return foreign key UUID matching either a {@link Memory#getId()} or {@link Entity#getId()}
+     */
+    public String getSourceId() {
+        return sourceId;
+    }
 
-    public String getTargetId() { return targetId; }
-    public void setTargetId(String targetId) { this.targetId = targetId; }
+    /**
+     * Sets the UUID of the source record.
+     *
+     * @param sourceId foreign key UUID
+     */
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
 
-    public Provenance getProvenance() { return provenance; }
-    public void setProvenance(Provenance provenance) { this.provenance = provenance; }
+    /**
+     * Gets the semantic relationship type linking source to target.
+     *
+     * <p>Defines the traversal semantics (e.g., {@link RelationType#SUPERSEDES} creates a historical
+     * precedence chain, {@link RelationType#STORED_AT} creates a spatial containment link).</p>
+     *
+     * @return the {@link RelationType} classification
+     */
+    public RelationType getRelationType() {
+        return relationType;
+    }
 
-    public Double getConfidence() { return confidence; }
-    public void setConfidence(Double confidence) { this.confidence = confidence; }
+    /**
+     * Sets the semantic relationship type.
+     *
+     * @param relationType the {@link RelationType} classification
+     */
+    public void setRelationType(RelationType relationType) {
+        this.relationType = relationType;
+    }
 
-    public long getCreatedAt() { return createdAt; }
-    public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
+    /**
+     * Gets the polymorphic type discriminator for the relation target.
+     *
+     * <p>Must be one of the constants defined in {@code DatabaseConstants.RelationParty}:
+     * {@code "MEMORY"} or {@code "ENTITY"}.</p>
+     *
+     * @return target type discriminator string
+     */
+    public String getTargetType() {
+        return targetType;
+    }
 
-    public Long getLastConfirmedAt() { return lastConfirmedAt; }
-    public void setLastConfirmedAt(Long lastConfirmedAt) { this.lastConfirmedAt = lastConfirmedAt; }
+    /**
+     * Sets the polymorphic type discriminator for the relation target.
+     *
+     * @param targetType target type discriminator string ("MEMORY" or "ENTITY")
+     */
+    public void setTargetType(String targetType) {
+        this.targetType = targetType;
+    }
+
+    /**
+     * Gets the UUID of the target record.
+     *
+     * @return foreign key UUID matching either a {@link Memory#getId()} or {@link Entity#getId()}
+     */
+    public String getTargetId() {
+        return targetId;
+    }
+
+    /**
+     * Sets the UUID of the target record.
+     *
+     * @param targetId foreign key UUID
+     */
+    public void setTargetId(String targetId) {
+        this.targetId = targetId;
+    }
+
+    /**
+     * Gets the provenance indicating how this relationship was created.
+     *
+     * <p><b>Trust Invariant:</b> Inferred or extracted relations (e.g. from NLP heuristics)
+     * must have {@link Provenance#INFERRED} or {@link Provenance#EXTRACTED} and are subject to
+     * lower trust ranking than user-created relationships ({@link Provenance#USER_ENTERED}).</p>
+     *
+     * @return the {@link Provenance} origin of this relationship
+     */
+    public Provenance getProvenance() {
+        return provenance;
+    }
+
+    /**
+     * Sets the provenance indicating how this relationship was created.
+     *
+     * @param provenance the {@link Provenance} origin
+     */
+    public void setProvenance(Provenance provenance) {
+        this.provenance = provenance;
+    }
+
+    /**
+     * Gets the extraction or inference confidence score.
+     *
+     * <p><b>Value Range & Semantics:</b> Must be in the interval [0.0, 1.0]. Null for user-created relations.
+     * Used by retrieval graph traversals to prune weak inferences below a threshold.</p>
+     *
+     * @return confidence value in [0.0, 1.0], or null if not applicable
+     */
+    public Double getConfidence() {
+        return confidence;
+    }
+
+    /**
+     * Sets the extraction or inference confidence score.
+     *
+     * @param confidence optional confidence in [0.0, 1.0], or null
+     */
+    public void setConfidence(Double confidence) {
+        this.confidence = confidence;
+    }
+
+    /**
+     * Gets the creation timestamp in UTC epoch milliseconds.
+     *
+     * @return UTC epoch milliseconds
+     */
+    public long getCreatedAt() {
+        return createdAt;
+    }
+
+    /**
+     * Sets the creation timestamp in UTC epoch milliseconds.
+     *
+     * @param createdAt UTC epoch milliseconds
+     */
+    public void setCreatedAt(long createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    /**
+     * Gets the timestamp when the user last explicitly verified that this relationship holds true.
+     *
+     * <p>Used by freshness decay algorithms (e.g., confirming that an item is still stored at the
+     * referenced location resets the decay clock).</p>
+     *
+     * @return UTC epoch milliseconds, or null if never confirmed
+     */
+    public Long getLastConfirmedAt() {
+        return lastConfirmedAt;
+    }
+
+    /**
+     * Sets the timestamp when the user last confirmed this relationship.
+     *
+     * @param lastConfirmedAt UTC epoch milliseconds, or null
+     */
+    public void setLastConfirmedAt(Long lastConfirmedAt) {
+        this.lastConfirmedAt = lastConfirmedAt;
+    }
 
     @Override
     public String toString() {

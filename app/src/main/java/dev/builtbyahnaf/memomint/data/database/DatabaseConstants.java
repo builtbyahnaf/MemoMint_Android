@@ -40,9 +40,10 @@ public final class DatabaseConstants {
      * <p>Version history:</p>
      * <ul>
      *   <li>Version 1: Initial schema (Phase 1 — all core tables).</li>
+     *   <li>Version 2: Full-text search virtual table (memories_fts) and sync triggers (Phase 2).</li>
      * </ul>
      */
-    public static final int DATABASE_VERSION = 1;
+    public static final int DATABASE_VERSION = 2;
 
     // =========================================================================
     // Table: memories
@@ -64,6 +65,21 @@ public final class DatabaseConstants {
         public static final String COL_SOURCE_ID        = "source_id";
         public static final String COL_STATUS           = "status";
         public static final String COL_LAST_CONFIRMED_AT = "last_confirmed_at";
+    }
+
+    // =========================================================================
+    // Table: memories_fts (FTS5 full-text search index, Schema v2)
+    // =========================================================================
+
+    /** Constants for the {@code memories_fts} virtual table (Phase 2). */
+    public static final class MemoriesFts {
+        private MemoriesFts() {}
+
+        public static final String TABLE = "memories_fts";
+
+        public static final String COL_ID            = "id";
+        public static final String COL_TITLE         = "title";
+        public static final String COL_ORIGINAL_TEXT = "original_text";
     }
 
     // =========================================================================
@@ -486,5 +502,63 @@ public final class DatabaseConstants {
         public static final String CREATE_IDX_INDEX_JOBS_SOURCE =
                 "CREATE INDEX IF NOT EXISTS idx_index_jobs_source"
                         + " ON " + IndexJobs.TABLE + "(" + IndexJobs.COL_SOURCE_ID + ")";
+
+        // =====================================================================
+        // Schema Version 2: Full-Text Search (memories_fts) & Sync Triggers
+        // =====================================================================
+
+        /**
+         * Creates the {@code memories_fts} virtual table using FTS5 for fast full-text
+         * indexing and BM25 ranking (Schema Version 2).
+         * Uses unicode61 tokenizer with diacritics stripping.
+         */
+        public static final String CREATE_MEMORIES_FTS =
+                "CREATE VIRTUAL TABLE IF NOT EXISTS " + MemoriesFts.TABLE + " USING fts5("
+                        + MemoriesFts.COL_ID + " UNINDEXED, "
+                        + MemoriesFts.COL_TITLE + ", "
+                        + MemoriesFts.COL_ORIGINAL_TEXT + ", "
+                        + "tokenize = 'unicode61 remove_diacritics 2'"
+                        + ")";
+
+        /**
+         * Trigger to automatically insert newly created memories into {@code memories_fts}.
+         */
+        public static final String CREATE_TRIGGER_MEMORIES_AI =
+                "CREATE TRIGGER IF NOT EXISTS trigger_memories_ai AFTER INSERT ON " + Memories.TABLE
+                        + " BEGIN "
+                        + "INSERT INTO " + MemoriesFts.TABLE + "("
+                        + MemoriesFts.COL_ID + ", " + MemoriesFts.COL_TITLE + ", " + MemoriesFts.COL_ORIGINAL_TEXT
+                        + ") VALUES (new." + Memories.COL_ID + ", new." + Memories.COL_TITLE + ", new." + Memories.COL_ORIGINAL_TEXT + ");"
+                        + " END";
+
+        /**
+         * Trigger to automatically delete removed memories from {@code memories_fts}.
+         */
+        public static final String CREATE_TRIGGER_MEMORIES_AD =
+                "CREATE TRIGGER IF NOT EXISTS trigger_memories_ad AFTER DELETE ON " + Memories.TABLE
+                        + " BEGIN "
+                        + "DELETE FROM " + MemoriesFts.TABLE + " WHERE " + MemoriesFts.COL_ID + " = old." + Memories.COL_ID + ";"
+                        + " END";
+
+        /**
+         * Trigger to automatically update {@code memories_fts} when a memory's title or text changes.
+         */
+        public static final String CREATE_TRIGGER_MEMORIES_AU =
+                "CREATE TRIGGER IF NOT EXISTS trigger_memories_au AFTER UPDATE ON " + Memories.TABLE
+                        + " BEGIN "
+                        + "DELETE FROM " + MemoriesFts.TABLE + " WHERE " + MemoriesFts.COL_ID + " = old." + Memories.COL_ID + ";"
+                        + "INSERT INTO " + MemoriesFts.TABLE + "("
+                        + MemoriesFts.COL_ID + ", " + MemoriesFts.COL_TITLE + ", " + MemoriesFts.COL_ORIGINAL_TEXT
+                        + ") VALUES (new." + Memories.COL_ID + ", new." + Memories.COL_TITLE + ", new." + Memories.COL_ORIGINAL_TEXT + ");"
+                        + " END";
+
+        /**
+         * Populates {@code memories_fts} with all existing memories during v1 -> v2 migration.
+         */
+        public static final String POPULATE_MEMORIES_FTS =
+                "INSERT INTO " + MemoriesFts.TABLE + "("
+                        + MemoriesFts.COL_ID + ", " + MemoriesFts.COL_TITLE + ", " + MemoriesFts.COL_ORIGINAL_TEXT + ")"
+                        + " SELECT " + Memories.COL_ID + ", " + Memories.COL_TITLE + ", " + Memories.COL_ORIGINAL_TEXT
+                        + " FROM " + Memories.TABLE;
     }
 }

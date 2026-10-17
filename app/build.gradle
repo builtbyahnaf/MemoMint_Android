@@ -12,8 +12,8 @@ android {
         applicationId "dev.builtbyahnaf.memomint"
         minSdk 30
         targetSdk 37
-        versionCode 101
-        versionName "1.0"
+        versionCode 1031415
+        versionName "1.013.7-C"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

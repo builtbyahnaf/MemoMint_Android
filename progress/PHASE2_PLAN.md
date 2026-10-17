@@ -1,6 +1,6 @@
 # Project MemoMint — Phase 2: Retrieval Foundation Plan
 
-> **Phase Status:** Planned  
+> **Phase Status:** Completed  
 > **Roadmap Target:** Phase 2 (Section 21 of `PROJECT_MEMOMINT.md`)  
 > **Completion Criterion:** A comprehensive automated test suite demonstrates that relevant memories can be retrieved through both direct keyword queries and selected indirect/synonym queries entirely offline.  
 > **Guiding Principles:** Section 12 (Retrieval Engine), Section 25.6 (Implementation Workflow), and Section 25.7 (AI Coding Agent Guidelines).
@@ -199,13 +199,21 @@ Section 12.6 requires measuring retrieval on a version-controlled benchmark fixt
 
 ## 7. Phase 2 Completion Criteria Checklist
 
-- [ ] SQLite schema version 2 created with full-text search table (`memories_fts`) and synchronization triggers.
-- [ ] Safe `onUpgrade` migration from schema v1 to v2 implemented and tested.
-- [ ] Pure JVM `QueryNormalizer` implemented with Unicode folding and stopword tagging.
-- [ ] Curated, versioned `SynonymDictionary` implemented.
-- [ ] `FuzzyMatcher` implemented with Levenshtein metrics.
-- [ ] `RelevanceScorer` combining FTS, synonym, metadata, and fuzzy signals.
-- [ ] Search explanation module generating transparent reason strings.
-- [ ] `SearchService` providing asynchronous search APIs to presentation layer.
-- [ ] Search bar integrated into `MainActivity` with real-time/instant filtering.
-- [ ] Benchmark test suite verifying Recall@1, Recall@3, and MRR.
+- [x] SQLite schema version 2 created with full-text search table (`memories_fts`) and synchronization triggers.
+- [x] Safe `onUpgrade` migration from schema v1 to v2 implemented and tested.
+- [x] Pure JVM `QueryNormalizer` implemented with Unicode folding and stopword tagging.
+- [x] Curated, versioned `SynonymDictionary` implemented.
+- [x] `FuzzyMatcher` implemented with Levenshtein metrics.
+- [x] `RelevanceScorer` combining FTS, synonym, metadata, and fuzzy signals.
+- [x] Search explanation module generating transparent reason strings.
+- [x] `SearchService` providing asynchronous search APIs to presentation layer.
+- [x] Search bar integrated into `MainActivity` with real-time/instant filtering.
+- [x] Benchmark test suite verifying Recall@1, Recall@3, and MRR.
+
+### Achieved Benchmark Results (`RetrievalBenchmarkTest`):
+- **Recall@1:** **84.21%** (Target: $\ge 70\%$)
+- **Recall@3:** **94.74%** (Target: $\ge 85\%$)
+- **Recall@5:** **94.74%** (Target: $\ge 90\%$)
+- **Mean Reciprocal Rank (MRR):** **0.895** (Target: $\ge 0.75$)
+- **Average Query Latency:** **3.46 ms** (Target: $< 50\text{ ms}$)
+- **Negative Query Guard:** 100% rejection of hallucinated matches on distractor queries.

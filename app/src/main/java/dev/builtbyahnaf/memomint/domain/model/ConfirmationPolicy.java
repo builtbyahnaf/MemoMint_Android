@@ -101,22 +101,89 @@ public class ConfirmationPolicy {
     // Getters & setters
     // -------------------------------------------------------------------------
 
+    /**
+     * Returns the UUID of the memory this confirmation policy monitors.
+     *
+     * @return memory UUID primary key
+     */
     public String getMemoryId() { return memoryId; }
+
+    /**
+     * Sets the UUID of the memory monitored by this policy.
+     *
+     * @param memoryId stable UUID of the memory
+     */
     public void setMemoryId(String memoryId) { this.memoryId = memoryId; }
 
+    /**
+     * Indicates whether confirmation check-in prompts are currently active.
+     *
+     * @return true if prompts are scheduled and enabled; false if silenced
+     */
     public boolean isEnabled() { return enabled; }
+
+    /**
+     * Enables or disables periodic freshness prompts for this memory.
+     *
+     * @param enabled true to activate confirmation prompts, false to disable
+     */
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
+    /**
+     * Returns the interval type string (e.g. DAILY, THREE_DAYS, WEEKLY, DISABLED).
+     *
+     * @return interval classification string
+     * @see dev.builtbyahnaf.memomint.data.database.DatabaseConstants.IntervalType
+     */
     public String getIntervalType() { return intervalType; }
+
+    /**
+     * Sets the interval classification type for scheduling freshness checks.
+     *
+     * @param intervalType interval string from DatabaseConstants.IntervalType
+     */
     public void setIntervalType(String intervalType) { this.intervalType = intervalType; }
 
+    /**
+     * Returns the numeric duration in days between confirmation check-in prompts.
+     *
+     * @return interval duration in days
+     */
     public int getIntervalValue() { return intervalValue; }
+
+    /**
+     * Sets the numeric interval duration in days between prompts.
+     *
+     * @param intervalValue duration in days (positive integer)
+     */
     public void setIntervalValue(int intervalValue) { this.intervalValue = intervalValue; }
 
+    /**
+     * Returns the timestamp when the user was last prompted to confirm this memory.
+     *
+     * @return UTC epoch milliseconds, or null if never prompted
+     */
     public Long getLastPromptedAt() { return lastPromptedAt; }
+
+    /**
+     * Records when the user was last presented with a freshness confirmation prompt.
+     *
+     * @param lastPromptedAt UTC epoch milliseconds
+     */
     public void setLastPromptedAt(Long lastPromptedAt) { this.lastPromptedAt = lastPromptedAt; }
 
+    /**
+     * Returns the timestamp when the next check-in prompt should be presented to the user.
+     *
+     * @return UTC epoch milliseconds, or null if disabled or uncalculated
+     */
     public Long getNextCheckAt() { return nextCheckAt; }
+
+    /**
+     * Sets the scheduled time for the next freshness check-in prompt.
+     *
+     * @param nextCheckAt UTC epoch milliseconds
+     */
     public void setNextCheckAt(Long nextCheckAt) { this.nextCheckAt = nextCheckAt; }
 
     @Override
