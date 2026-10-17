@@ -1,7 +1,10 @@
 package dev.builtbyahnaf.memomint.data.repository;
 
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+// Use requery SQLiteDatabase (bundled FTS5 engine) — must match MemoMintDatabase's engine.
+// FTS5 MATCH queries and bm25() scoring require the requery bundled SQLite.
+// See MemoMintDatabase.java for the full rationale on why requery is required.
+import io.requery.android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import java.util.ArrayList;

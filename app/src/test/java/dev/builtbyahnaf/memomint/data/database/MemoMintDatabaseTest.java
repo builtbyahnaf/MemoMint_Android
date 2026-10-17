@@ -3,7 +3,8 @@ package dev.builtbyahnaf.memomint.data.database;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+// Must match MemoMintDatabase's engine. See MemoMintDatabase.java for full rationale.
+import io.requery.android.database.sqlite.SQLiteDatabase;
 
 import org.junit.After;
 import org.junit.Before;

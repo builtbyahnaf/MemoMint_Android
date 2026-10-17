@@ -8,6 +8,10 @@ material = "1.14.0"
 activityKtx = "1.13.0"
 constraintlayout = "2.2.2"
 robolectric = "4.13"
+# sqlite-android ships a standalone SQLite native library with FTS5, FTS4, JSON1, and
+# other extensions compiled in. This replaces the system SQLite on Android (API 30-35)
+# which may omit FTS5, causing "no such module: fts5" crashes at schema creation time.
+sqliteAndroid = "3.49.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -18,6 +22,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+# Bundled SQLite with FTS5 compiled in — see sqliteAndroid version above.
+sqlite-android = { group = "com.github.requery", name = "sqlite-android", version.ref = "sqliteAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

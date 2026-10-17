@@ -1,8 +1,30 @@
 package dev.builtbyahnaf.memomint.data.database;
 
 import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
+
+/*
+ * WHY io.requery.android.database instead of android.database.sqlite?
+ *
+ * Android's system SQLite (used by android.database.sqlite.SQLiteOpenHelper) may not
+ * include FTS5 on devices running API 30–35, depending on the OEM and ROM build flags.
+ * Attempting to execute "CREATE VIRTUAL TABLE ... USING fts5(...)" on such a device
+ * causes a fatal SQLiteException: "no such module: fts5", making the app non-functional.
+ *
+ * The io.requery sqlite-android library (io.requery:sqlite-android) bundles a modern
+ * SQLite binary (~3.49.x) compiled with FTS5, FTS4, JSON1, rtree, and other extensions
+ * always enabled. Its SQLiteOpenHelper, SQLiteDatabase, and Cursor classes are
+ * drop-in API-compatible replacements for the android.database.sqlite equivalents,
+ * so no schema, SQL, or query logic needs to change — only these import lines.
+ *
+ * The trade-off: the AAR adds approximately 2–3 MB to the APK for the native library.
+ * For a privacy-first, offline-first app this is an acceptable cost because:
+ *  1. FTS5 is mandatory for BM25-ranked full-text search (Section 12.3).
+ *  2. There is no viable runtime workaround — FTS5 cannot be shimmed over FTS4 without
+ *     breaking the BM25 scoring API used by SearchRepositoryImpl.
+ *  3. sqlite-android is maintained and widely used in the Android ecosystem.
+ */
+import io.requery.android.database.sqlite.SQLiteDatabase;
+import io.requery.android.database.sqlite.SQLiteOpenHelper;
 
 /**
  * SQLite database helper for MemoMint.

@@ -1,3 +1,33 @@
+# Version 1.014.2-D
+
+**Build:** `1042486`
+
+## Bug Fix: SQLite FTS5 Initialization Failure
+
+### Root Cause
+
+`MemoMintDatabase` relied on Android's `android.database.sqlite.SQLiteOpenHelper`, which delegates database operations to the system SQLite implementation.
+
+On Android API levels 30–35, OEM-provided SQLite builds may lack FTS5 support. Consequently, executing the following statement caused a database initialization failure:
+
+```sql
+CREATE VIRTUAL TABLE ... USING fts5(...)
+```
+
+**Error:**
+
+```text
+SQLiteException: no such module: fts5
+```
+
+This prevented the database from initializing correctly, causing `loadMemories()` to fail immediately on application launch.
+
+### Fix
+
+- Resolved dependency resolution errors.
+- Refactored the relevant database code to address the initialization failure.
+
+
 # Version 1.013.7-C
 
 **Build:** `1031415`

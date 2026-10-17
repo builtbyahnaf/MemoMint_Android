@@ -12,8 +12,8 @@ android {
         applicationId "dev.builtbyahnaf.memomint"
         minSdk 30
         targetSdk 37
-        versionCode 1031415
-        versionName "1.013.7-C"
+        versionCode 1042486
+        versionName "1.014.2-D"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -44,6 +44,14 @@ dependencies {
     implementation libs.appcompat
     implementation libs.constraintlayout
     implementation libs.material
+    // Bundled SQLite with FTS5 compiled in. The system SQLite on Android API 30–35
+    // may not include FTS5, causing "no such module: fts5" at runtime when the
+    // memories_fts virtual table is created. This AAR ships its own native SQLite
+    // shared library (~2 MB) and transparent Java wrapper that delegates all
+    // SQLiteOpenHelper, SQLiteDatabase, and Cursor calls to the bundled engine.
+    implementation libs.sqlite.android
+
+    //implementation 'com.github.requery:sqlite-android:3.50.4'
     testImplementation libs.junit
     testImplementation libs.robolectric
     androidTestImplementation libs.espresso.core
