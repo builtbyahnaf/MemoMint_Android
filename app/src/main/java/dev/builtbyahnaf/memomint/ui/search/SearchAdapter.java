@@ -5,6 +5,8 @@ import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.format.DateUtils;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -170,13 +172,24 @@ public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.SearchResu
             tvOriginalText.setText(highlightTerms(memory.getOriginalText(), result.getMatchedTerms()));
 
             // 6. Explanations (Provenance Section)
+            // Filter out redundant title/exact keyword match explanations as the match is visually highlighted directly
             List<String> explanations = result.getExplanations();
-            if (!explanations.isEmpty()) {
+            List<String> substantiveExplanations = new ArrayList<>();
+            for (String exp : explanations) {
+                if (exp == null) continue;
+                String lower = exp.toLowerCase(Locale.ROOT);
+                if (lower.startsWith("matched memory title") || lower.startsWith("matched title") || lower.startsWith("exact match on")) {
+                    continue;
+                }
+                substantiveExplanations.add(exp);
+            }
+
+            if (!substantiveExplanations.isEmpty()) {
                 layoutExplanations.setVisibility(View.VISIBLE);
                 StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < explanations.size(); i++) {
+                for (int i = 0; i < substantiveExplanations.size(); i++) {
                     if (i > 0) sb.append("\n");
-                    sb.append("• ").append(explanations.get(i));
+                    sb.append("• ").append(substantiveExplanations.get(i));
                 }
                 tvExplanationText.setText(sb.toString());
             } else {
@@ -275,14 +288,44 @@ public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.SearchResu
             SpannableStringBuilder builder = new SpannableStringBuilder(text);
             String lowerText = text.toLowerCase(Locale.ROOT);
 
+            // Deduplicate and sort terms by length descending to prioritize longer phrases
+            List<String> cleanTerms = new ArrayList<>();
             for (String term : terms) {
-                if (term == null || term.trim().isEmpty()) continue;
-                String lowerTerm = term.toLowerCase(Locale.ROOT).trim();
+                if (term != null && !term.trim().isEmpty()) {
+                    String clean = term.toLowerCase(Locale.ROOT).trim();
+                    if (!cleanTerms.contains(clean)) {
+                        cleanTerms.add(clean);
+                    }
+                }
+            }
+            cleanTerms.sort((a, b) -> Integer.compare(b.length(), a.length()));
+
+            Context ctx = itemView.getContext();
+            int highlightBg = ContextCompat.getColor(ctx, R.color.search_highlight_bg);
+            int highlightText = ContextCompat.getColor(ctx, R.color.search_highlight_text);
+
+            boolean[] occupied = new boolean[text.length()];
+
+            for (String term : cleanTerms) {
                 int index = 0;
-                while ((index = lowerText.indexOf(lowerTerm, index)) != -1) {
-                    int end = index + lowerTerm.length();
-                    builder.setSpan(new StyleSpan(Typeface.BOLD), index, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    index = end;
+                while ((index = lowerText.indexOf(term, index)) != -1) {
+                    int end = Math.min(index + term.length(), text.length());
+                    boolean alreadyCovered = false;
+                    for (int i = index; i < end; i++) {
+                        if (occupied[i]) {
+                            alreadyCovered = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyCovered) {
+                        for (int i = index; i < end; i++) {
+                            occupied[i] = true;
+                        }
+                        builder.setSpan(new BackgroundColorSpan(highlightBg), index, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        builder.setSpan(new ForegroundColorSpan(highlightText), index, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        builder.setSpan(new StyleSpan(Typeface.BOLD), index, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                    index++;
                 }
             }
 

@@ -512,13 +512,42 @@ public final class DatabaseConstants {
          * indexing and BM25 ranking (Schema Version 2).
          * Uses unicode61 tokenizer with diacritics stripping.
          */
-        public static final String CREATE_MEMORIES_FTS =
+        public static final String CREATE_MEMORIES_FTS5 =
                 "CREATE VIRTUAL TABLE IF NOT EXISTS " + MemoriesFts.TABLE + " USING fts5("
                         + MemoriesFts.COL_ID + " UNINDEXED, "
                         + MemoriesFts.COL_TITLE + ", "
                         + MemoriesFts.COL_ORIGINAL_TEXT + ", "
                         + "tokenize = 'unicode61 remove_diacritics 2'"
                         + ")";
+
+        /**
+         * Creates the {@code memories_fts} virtual table using FTS4 as a safe, guaranteed
+         * fallback when FTS5 is not compiled into the Android device's SQLite engine.
+         * FTS4 is built into 100% of Android devices (since API 11).
+         */
+        public static final String CREATE_MEMORIES_FTS4 =
+                "CREATE VIRTUAL TABLE IF NOT EXISTS " + MemoriesFts.TABLE + " USING fts4("
+                        + MemoriesFts.COL_ID + ", "
+                        + MemoriesFts.COL_TITLE + ", "
+                        + MemoriesFts.COL_ORIGINAL_TEXT + ", "
+                        + "tokenize=unicode61"
+                        + ")";
+
+        /**
+         * Creates the {@code memories_fts} virtual table using FTS3 as an ultra-compatible fallback
+         * supported on 100% of SQLite engines including JVM test environments.
+         */
+        public static final String CREATE_MEMORIES_FTS3 =
+                "CREATE VIRTUAL TABLE IF NOT EXISTS " + MemoriesFts.TABLE + " USING fts3("
+                        + MemoriesFts.COL_ID + ", "
+                        + MemoriesFts.COL_TITLE + ", "
+                        + MemoriesFts.COL_ORIGINAL_TEXT
+                        + ")";
+
+        /**
+         * Alias pointing to the primary FTS definition.
+         */
+        public static final String CREATE_MEMORIES_FTS = CREATE_MEMORIES_FTS5;
 
         /**
          * Trigger to automatically insert newly created memories into {@code memories_fts}.

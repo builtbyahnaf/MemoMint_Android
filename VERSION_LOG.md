@@ -1,3 +1,63 @@
+# Version 1.014.7-S
+
+**Build:** `1047648`
+
+Enhanced search result presentation with dynamic, in-place text highlighting, replacing verbose explanatory text with clear visual match indicators. Improved SQLite FTS compatibility, search fallback mechanisms, and prefix/substring matching reliability.
+
+## Summary of Fixes & Enhancements
+
+### 1. Critical Database Crash Fix — `no such module: fts5`
+
+**Root cause**
+
+SQLite engines compiled without `SQLITE_ENABLE_FTS5` support—including certain OEM ROMs, emulators, and JVM testing environments—failed to execute FTS5 virtual table creation statements. Additionally, synchronization triggers (`trigger_memories_ai`, `trigger_memories_ad`, and `trigger_memories_au`) were registered unconditionally, causing database operations to fail when FTS5 was unavailable.
+
+**Fix — `MemoMintDatabase.java`**
+
+- Added SQLite capability detection using `sqlite_compileoption_used` and `PRAGMA module_list`.
+- Implemented a cascading fallback strategy:
+  1. **FTS5** — BM25 ranking and diacritic stripping.
+  2. **FTS4** — Alternative full-text indexing supported by many Android SQLite builds.
+  3. **FTS3** — Broader compatibility with SQLite environments, including JVM/Robolectric testing.
+  4. **Relational mode** — Ensures basic memory operations remain available without full-text indexing.
+- Made synchronization trigger creation conditional on successful FTS virtual table initialization, preventing unsupported FTS modules from breaking regular CRUD operations.
+- Added automatic schema recovery through `repairFtsSchemaIfUnsupported()` in `onOpen`, allowing unsupported existing FTS schemas to be repaired and re-indexed without requiring users to clear application data.
+- Preserved native Android `android.database.sqlite` imports throughout the application.
+
+### 2. Case-Insensitive Prefix & Substring Search
+
+**Example:** Searching for `air` can now match `Airpods`.
+
+- **`SearchRepositoryImpl.java`**
+  - Corrected `sanitizeFtsQuery()` to generate bareword prefix queries such as `air*` instead of quoted prefix expressions such as `"air"*`.
+  - Added a multi-tier retrieval strategy:
+    1. FTS5 with BM25 ranking.
+    2. FTS4/FTS3 fallback.
+    3. Case-insensitive SQL `LIKE '%token%'` matching against `memories.title` and `memories.original_text`.
+
+- **`SearchService.java`**
+  - Populates `matchedTerms` using search tokens and matching raw-query substrings found in memory content.
+
+### 3. In-Place Visual Match Highlighting
+
+**Files:** `SearchAdapter.java`, `colors.xml`
+
+- Reworked `highlightTerms()` to highlight matching words and substrings directly within search result titles and body text.
+- Introduced mint-green highlighting with the following styles:
+  - **Background:** `search_highlight_bg` — `#A7F3D0`
+  - **Text:** `search_highlight_text` — `#064E3B`
+  - **Emphasis:** `StyleSpan(Typeface.BOLD)`
+- Removed redundant provenance labels, such as `Matched memory title...`, allowing users to identify relevant matches directly within the result cards.
+
+### 4. Verification & Testing
+
+- **Java toolchain:** Configured Java 17 in `build.gradle`.
+- **New unit test:** Added `search_caseInsensitivePrefixMatching_matchesAirpodsForAir` to `RetrievalBenchmarkTest.java`.
+- **Test results:** All **67 unit tests passed**, covering the database, repository, service, and retrieval engine.
+- **Build verification:** `.\gradlew.bat assembleDebug` completed successfully, producing the debug APK with zero build errors.
+
+
+
 # Version 1.014.2-D
 
 **Build:** `1042486`

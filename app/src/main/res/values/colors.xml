@@ -63,4 +63,8 @@
     <!-- Semantic Text Colors -->
     <color name="mint_primary">@color/md_theme_light_primary</color>
     <color name="on_surface_variant_light">@color/md_theme_light_onSurfaceVariant</color>
+
+    <!-- Search Match Highlight Colors -->
+    <color name="search_highlight_bg">#A7F3D0</color>
+    <color name="search_highlight_text">#064E3B</color>
 </resources>

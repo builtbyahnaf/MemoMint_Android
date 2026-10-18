@@ -512,10 +512,10 @@ Example:
 
 | Metric | Phase 2 Achieved | Phase 3 Target |
 |---|---|---|
-| Recall@1 | 84.21% | >= 80% (larger, harder test set with relation cases) |
-| Recall@3 | 94.74% | >= 88% |
+| Recall@1 | 84.21% | >= 82% (larger, harder test set with relation cases) |
+| Recall@3 | 94.74% | >= 91% |
 | MRR | 0.895 | >= 0.83 |
-| Latency | 3.46 ms | < 50 ms (including relation expansion step) |
+| Latency | 3.46 ms | < 5 ms (including relation expansion step) |
 | Context extraction entity coverage | N/A (new metric) | >= 75% of PHYSICAL_ITEM memories yield >= 1 entity |
 | Negative query guard | 100% | 100% (no regression allowed) |
 

@@ -219,8 +219,22 @@ public class SearchService {
             if (memoryTokens.contains(qToken) || fullMemoryText.contains(qToken)) {
                 exactMatches++;
                 exactMatchTokens.add(qToken);
-                matchedTerms.add(qToken);
+                if (!matchedTerms.contains(qToken)) {
+                    matchedTerms.add(qToken);
+                }
             }
+        }
+
+        // Also capture any other query tokens (and raw query string) for substring matching
+        // (e.g., searching for "air" against "Airpods" adds "air" to matchedTerms for visual highlighting)
+        for (String token : query.getAllTokens()) {
+            if (fullMemoryText.contains(token) && !matchedTerms.contains(token)) {
+                matchedTerms.add(token);
+            }
+        }
+        String cleanRaw = query.getRawQuery().trim().toLowerCase(Locale.ROOT);
+        if (!cleanRaw.isEmpty() && fullMemoryText.contains(cleanRaw) && !matchedTerms.contains(cleanRaw)) {
+            matchedTerms.add(cleanRaw);
         }
 
         double sText;
@@ -276,7 +290,7 @@ public class SearchService {
             for (String qToken : contentTokens) {
                 if (titleLower.contains(qToken)) {
                     sMeta = Math.min(1.0, sMeta + 0.30);
-                    explanations.add("Matched memory title '" + memory.getTitle() + "'");
+                    // Match in title is highlighted directly in the card; no redundant "Matched memory title" explanation text
                     break;
                 }
             }

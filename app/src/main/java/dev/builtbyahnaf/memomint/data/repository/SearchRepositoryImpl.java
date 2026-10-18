@@ -1,14 +1,14 @@
 package dev.builtbyahnaf.memomint.data.repository;
 
 import android.database.Cursor;
-// Use requery SQLiteDatabase (bundled FTS5 engine) — must match MemoMintDatabase's engine.
-// FTS5 MATCH queries and bm25() scoring require the requery bundled SQLite.
-// See MemoMintDatabase.java for the full rationale on why requery is required.
-import io.requery.android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import dev.builtbyahnaf.memomint.data.database.DatabaseConstants;
 import dev.builtbyahnaf.memomint.data.database.MemoMintDatabase;
@@ -18,18 +18,13 @@ import dev.builtbyahnaf.memomint.domain.model.MemoryType;
 import dev.builtbyahnaf.memomint.domain.model.SourceType;
 
 /**
- * SQLite FTS5 and SQL-backed implementation of {@link SearchRepository}.
+ * SQLite FTS (FTS5/FTS4) and SQL-backed implementation of {@link SearchRepository}.
  *
  * <h2>Purpose & Architectural Invariants</h2>
  * <p>Implements Layer D (Data and Indexing) candidate retrieval queries.
  * Queries {@code memories_fts} to fetch relevant candidates ranked by SQLite's native BM25
- * scoring function. Automatically joins candidates with the authoritative {@code memories} table
- * to ensure deleted memories ({@code status = 'DELETED'}) are filtered out.</p>
- *
- * <h2>FTS Query Sanitization</h2>
- * <p>User input may contain arbitrary punctuation or special characters (e.g. unmatched quotes,
- * operators) that could provoke SQLite FTS5 syntax errors. {@link #sanitizeFtsQuery(String)} ensures
- * query tokens are safely formatted into valid FTS5 expressions.</p>
+ * scoring function where supported (FTS5), with graceful fallback to standard FTS4 matching
+ * and case-insensitive substring (LIKE) scanning to guarantee full recall across all Android versions.</p>
  */
 public class SearchRepositoryImpl implements SearchRepository {
 
@@ -50,11 +45,11 @@ public class SearchRepositoryImpl implements SearchRepository {
     }
 
     /**
-     * Sanitizes a raw keyword string into a safe SQLite FTS5 MATCH expression.
-     * Replaces punctuation and wraps tokens in quotes to prevent FTS syntax exceptions.
+     * Sanitizes a raw keyword string into a safe SQLite FTS MATCH expression.
+     * Generates prefix tokens (e.g., "air*") to support partial/prefix matching (e.g. "air" -> "Airpods").
      *
      * @param query raw query or expanded term string
-     * @return safe FTS5 MATCH expression
+     * @return safe FTS MATCH expression
      */
     public static String sanitizeFtsQuery(String query) {
         if (query == null || query.trim().isEmpty()) {
@@ -65,10 +60,11 @@ public class SearchRepositoryImpl implements SearchRepository {
         String[] parts = query.trim().split("[^\\p{L}\\p{N}_-]+");
         List<String> validTokens = new ArrayList<>();
         for (String part : parts) {
-            String token = part.trim();
+            String token = part.trim().toLowerCase(Locale.ROOT);
             if (!token.isEmpty()) {
-                // Wrap in double quotes for literal phrase/token matching in FTS5
-                validTokens.add("\"" + token.replace("\"", "") + "\"*");
+                // In SQLite FTS (both FTS4 and FTS5), prefix matching is bareword* (e.g. air*).
+                // Do NOT wrap in double quotes like "air"*, which causes SQLite FTS syntax errors.
+                validTokens.add(token + "*");
             }
         }
 
@@ -93,8 +89,11 @@ public class SearchRepositoryImpl implements SearchRepository {
         }
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
+        Set<String> seenIds = new HashSet<>();
 
-        String sql = "SELECT m." + DatabaseConstants.Memories.COL_ID + ", "
+        // 1. Try primary FTS5 query with BM25 ranking
+        boolean ftsQuerySucceeded = false;
+        String sqlFts5 = "SELECT m." + DatabaseConstants.Memories.COL_ID + ", "
                 + "m." + DatabaseConstants.Memories.COL_TYPE + ", "
                 + "m." + DatabaseConstants.Memories.COL_ORIGINAL_TEXT + ", "
                 + "m." + DatabaseConstants.Memories.COL_TITLE + ", "
@@ -116,18 +115,94 @@ public class SearchRepositoryImpl implements SearchRepository {
 
         Cursor cursor = null;
         try {
-            cursor = db.rawQuery(sql, new String[]{safeQuery, String.valueOf(limit)});
+            cursor = db.rawQuery(sqlFts5, new String[]{safeQuery, String.valueOf(limit)});
             while (cursor.moveToNext()) {
                 Memory memory = cursorToMemory(cursor);
                 double rawBm25 = cursor.getDouble(10);
                 String snippet = cursor.getString(11);
                 candidates.add(new FtsCandidate(memory, rawBm25, snippet));
+                seenIds.add(memory.getId());
             }
+            ftsQuerySucceeded = true;
         } catch (Exception e) {
-            Log.e(TAG, "searchFts query failed: " + safeQuery, e);
+            Log.w(TAG, "searchFts FTS5 query failed (falling back to FTS4 without bm25): " + e.getMessage());
         } finally {
-            if (cursor != null) {
-                cursor.close();
+            if (cursor != null) cursor.close();
+        }
+
+        // 2. Fallback to FTS4 query if FTS5 (or bm25 function) is unavailable on this device
+        if (!ftsQuerySucceeded) {
+            String sqlFts4 = "SELECT m." + DatabaseConstants.Memories.COL_ID + ", "
+                    + "m." + DatabaseConstants.Memories.COL_TYPE + ", "
+                    + "m." + DatabaseConstants.Memories.COL_ORIGINAL_TEXT + ", "
+                    + "m." + DatabaseConstants.Memories.COL_TITLE + ", "
+                    + "m." + DatabaseConstants.Memories.COL_CREATED_AT + ", "
+                    + "m." + DatabaseConstants.Memories.COL_UPDATED_AT + ", "
+                    + "m." + DatabaseConstants.Memories.COL_SOURCE_TYPE + ", "
+                    + "m." + DatabaseConstants.Memories.COL_SOURCE_ID + ", "
+                    + "m." + DatabaseConstants.Memories.COL_STATUS + ", "
+                    + "m." + DatabaseConstants.Memories.COL_LAST_CONFIRMED_AT + " "
+                    + "FROM " + DatabaseConstants.MemoriesFts.TABLE + " fts "
+                    + "JOIN " + DatabaseConstants.Memories.TABLE + " m ON fts." + DatabaseConstants.MemoriesFts.COL_ID
+                    + " = m." + DatabaseConstants.Memories.COL_ID + " "
+                    + "WHERE " + DatabaseConstants.MemoriesFts.TABLE + " MATCH ? "
+                    + "  AND m." + DatabaseConstants.Memories.COL_STATUS + " != '" + MemoryStatus.DELETED.name() + "' "
+                    + "LIMIT ?";
+
+            try {
+                cursor = db.rawQuery(sqlFts4, new String[]{safeQuery, String.valueOf(limit)});
+                while (cursor.moveToNext()) {
+                    Memory memory = cursorToMemory(cursor);
+                    if (!seenIds.contains(memory.getId())) {
+                        candidates.add(new FtsCandidate(memory, -1.0, memory.getOriginalText()));
+                        seenIds.add(memory.getId());
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "searchFts FTS4 query also failed: " + e.getMessage());
+            } finally {
+                if (cursor != null) cursor.close();
+            }
+        }
+
+        // 3. Robust substring LIKE query on memories table to guarantee case-insensitive prefix/substring
+        // matching (e.g. searching "air" matches "Airpods" even if FTS token boundaries differ)
+        if (candidates.size() < limit) {
+            String[] rawWords = ftsQuery.trim().split("[^\\p{L}\\p{N}_-]+");
+            for (String word : rawWords) {
+                String token = word.trim();
+                if (token.length() >= 2 && candidates.size() < limit) {
+                    String likePattern = "%" + token + "%";
+                    String sqlLike = "SELECT " + DatabaseConstants.Memories.COL_ID + ", "
+                            + DatabaseConstants.Memories.COL_TYPE + ", "
+                            + DatabaseConstants.Memories.COL_ORIGINAL_TEXT + ", "
+                            + DatabaseConstants.Memories.COL_TITLE + ", "
+                            + DatabaseConstants.Memories.COL_CREATED_AT + ", "
+                            + DatabaseConstants.Memories.COL_UPDATED_AT + ", "
+                            + DatabaseConstants.Memories.COL_SOURCE_TYPE + ", "
+                            + DatabaseConstants.Memories.COL_SOURCE_ID + ", "
+                            + DatabaseConstants.Memories.COL_STATUS + ", "
+                            + DatabaseConstants.Memories.COL_LAST_CONFIRMED_AT + " "
+                            + "FROM " + DatabaseConstants.Memories.TABLE + " "
+                            + "WHERE " + DatabaseConstants.Memories.COL_STATUS + " != '" + MemoryStatus.DELETED.name() + "' "
+                            + "  AND (" + DatabaseConstants.Memories.COL_TITLE + " LIKE ? OR "
+                            + DatabaseConstants.Memories.COL_ORIGINAL_TEXT + " LIKE ?) "
+                            + "LIMIT ?";
+                    try {
+                        cursor = db.rawQuery(sqlLike, new String[]{likePattern, likePattern, String.valueOf(limit - candidates.size())});
+                        while (cursor.moveToNext()) {
+                            Memory memory = cursorToMemory(cursor);
+                            if (!seenIds.contains(memory.getId())) {
+                                candidates.add(new FtsCandidate(memory, -1.0, memory.getOriginalText()));
+                                seenIds.add(memory.getId());
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "searchBySubstring LIKE query failed: " + token, e);
+                    } finally {
+                        if (cursor != null) cursor.close();
+                    }
+                }
             }
         }
 

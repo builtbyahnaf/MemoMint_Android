@@ -20,6 +20,7 @@ import dev.builtbyahnaf.memomint.domain.model.MemoryStatus;
 import dev.builtbyahnaf.memomint.domain.model.MemoryType;
 import dev.builtbyahnaf.memomint.domain.model.SourceType;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -232,6 +233,46 @@ public class RetrievalBenchmarkTest {
                 assertTrue("Distractor query matches must have low score (< 0.50)", res.getFinalScore() < 0.50);
             }
         }
+    }
+
+    /**
+     * Verifies that searching for a lowercase prefix substring (e.g. "air") correctly matches
+     * a memory with capitalized compound words (e.g. "Airpods") in title/content and populates
+     * the matched terms list for UI visual highlighting.
+     */
+    @Test
+    public void search_caseInsensitivePrefixMatching_matchesAirpodsForAir() {
+        long now = System.currentTimeMillis();
+        Memory airpods = new Memory(
+                "M_AIRPODS",
+                MemoryType.PHYSICAL_ITEM,
+                "My white Airpods Pro charging case is on the office desk.",
+                "Airpods Case",
+                now,
+                now,
+                SourceType.TYPED,
+                null,
+                MemoryStatus.ACTIVE,
+                now
+        );
+        FakeBenchmarkSearchRepository fakeRepo = new FakeBenchmarkSearchRepository(
+                Collections.singletonList(airpods)
+        );
+        SearchService service = new SearchService(
+                fakeRepo,
+                new QueryNormalizer(),
+                new SynonymDictionary(),
+                new FuzzyMatcher(),
+                new RelevanceScorer(),
+                Runnable::run,
+                Runnable::run
+        );
+
+        List<SearchResult> results = service.searchSync("air");
+        assertNotNull("Results should not be null", results);
+        assertTrue("Results should find Airpods for query 'air'", results.size() > 0);
+        assertEquals("M_AIRPODS", results.get(0).getMemory().getId());
+        assertTrue("Matched terms should include 'air'", results.get(0).getMatchedTerms().contains("air"));
     }
 
     /**
