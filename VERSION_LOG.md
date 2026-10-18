@@ -1,3 +1,110 @@
+# Version 1.015.3-C
+
+**Build:** `1053108`
+
+## Implementation Summary
+
+Introduced a structured domain context layer for extracting facts from memories, linking entities, inferring relationships, and improving search through knowledge graph traversal.
+
+### 1. Domain Context Layer
+
+**Package:** `dev.builtbyahnaf.memomint.domain.context`
+
+- **`ExtractionResult`**
+  - Introduces an immutable domain model for extracted facts, including `ITEM_NAME`, `LOCATION`, `QUANTITY`, `TEMPORAL_MENTION`, and `KEYWORD`.
+  - Tracks provenance (`EXTRACTED_BY_RULE`, `USER_ENTERED`), canonical labels, and generator versions.
+
+- **`ItemVocabulary`**
+  - Adds a versioned vocabulary (`VOCABULARY_VERSION = 1`) covering physical items across electronics, furniture, personal belongings, and office supplies.
+  - Uses O(1) variant-to-canonical mappings for efficient item normalization.
+
+- **`ItemExtractor`**
+  - Implements regex-based, word-boundary extraction for `PHYSICAL_ITEM` memories.
+  - Prioritizes the longest matching variant and emits canonical `ITEM_NAME` facts.
+
+- **`LocationExtractor`**
+  - Uses precompiled regular expressions to identify containers, surfaces, proximity phrases, and room enclosures.
+  - Normalizes leading prepositions such as `in`, `on`, and `at`.
+
+- **`QuantityExtractor`**
+  - Extracts numeric quantities and container packaging expressions, such as `3 boxes of pens`.
+  - Converts number words from `one` through `ten` into digits.
+
+- **`DateTimeExtractor`**
+  - Extracts relative dates (`tomorrow`, `next Monday`, `in 3 days`) and absolute dates.
+  - Stores extracted temporal information as `TEMPORAL_MENTION` context records.
+
+- **`KeywordExtractor`**
+  - Integrates `QueryNormalizer` and `SynonymDictionary` to generate normalized, stopword-filtered, synonym-expanded `KEYWORD` facts.
+
+- **`ContextExtractor`**
+  - Orchestrates all five sub-extractors sequentially.
+  - Implements fail-safe error isolation to prevent individual extraction failures from disrupting the overall pipeline.
+
+- **`MemoryEntityLink`**
+  - Introduces a model linking memories to extracted entities and their semantic roles.
+
+- **`MemoryRelation`**
+  - Defines directed edges for representing relationships in the memory knowledge graph.
+
+- **`RelationshipInferrer`**
+  - Performs depth-1 relationship inference using shared entities.
+  - Generates bidirectional `SAME_LOCATION_AS` and `RELATED_ITEM` relations with a confidence score of `0.70`.
+
+### 2. Persistence Layer
+
+**Package:** `dev.builtbyahnaf.memomint.data.repository`
+
+- **`ContextRepository`**
+  - Defines the repository contract for context records, entity resolution, and relationship graph persistence.
+
+- **`ContextRepositoryImpl`**
+  - Implements persistence using standard Android `android.database.sqlite` APIs.
+  - Integrates with `DatabaseConstants` and `MemoMintDatabase` for SQLite schema and database access.
+
+### 3. Application Services
+
+**Package:** `dev.builtbyahnaf.memomint.application`
+
+- **`ContextService`**
+  - Coordinates asynchronous background context extraction, entity linking, and relationship persistence.
+  - Processes newly captured or updated memories without blocking the UI thread.
+
+- **`MemoryService`**
+  - Adds an optional `ContextService` integration hook.
+  - Triggers background context extraction through `createMemorySync()` and `updateMemorySync()`.
+
+### 4. Retrieval & Knowledge Graph Integration
+
+**Package:** `dev.builtbyahnaf.memomint.domain.retrieval`
+
+- **`RelationshipExpander`**
+  - Traverses depth-1 knowledge graph relationships.
+  - Applies a `0.80` score attenuation factor to graph-derived matches, ensuring directly matched memories retain their ranking advantage over relationship-traversed results.
+
+- **`RelevanceScorer`**
+  - Updates the hybrid relevance scoring formula to incorporate relationship-based relevance:
+
+    \[
+    \begin{aligned}
+    S_{\text{final}} ={}&
+    0.45S_{\text{text}} +
+    0.25S_{\text{synonym}} +\\
+    &0.15S_{\text{meta}} +
+    0.10S_{\text{relation}} +\\
+    &0.05S_{\text{fuzzy}}
+    \end{aligned}
+    \]
+
+- **`SearchResult`**
+  - Adds `relationScore` to represent relationship-based relevance.
+  - Preserves existing constructors for backward compatibility.
+
+- **`SearchService`**
+  - Integrates **Stage 3b: Graph Expansion** into the retrieval pipeline.
+  - Adds explainable provenance tagging through `Related memory match (graph hop)` to distinguish graph-derived results from direct matches.
+
+
 # Version 1.014.7-S
 
 **Build:** `1047648`
