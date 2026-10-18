@@ -12,10 +12,10 @@ import dev.builtbyahnaf.memomint.domain.model.MemoryType;
  * Scored, explainable search result encapsulating a retrieved {@link Memory}, its component
  * relevance scores, verifiable explanation tags, and separate trust/freshness status.
  *
- * <h2>Architectural Principles (Sections 12.4, 12.5 & Phase 2 Plan §3.6)</h2>
+ * <h2>Architectural Principles (Sections 12.4, 12.5 &amp; Phase 3 Plan)</h2>
  * <ul>
  *   <li><b>Explainable Provenance:</b> Every result must provide transparent, verifiable reasons
- *       for why it matched (e.g., "Exact match on 'cable'", "Synonym match: 'backup' ↔ 'spare'").
+ *       for why it matched (e.g., "Exact match on 'cable'", "Related memory match (graph hop)").
  *       The engine must never fabricate reasons post-hoc.</li>
  *   <li><b>Relevance vs. Trust Separation:</b> Semantic relevance rank ($[0.0, 1.0]$) is strictly
  *       separated from temporal freshness and user confirmation. A memory describing an old location
@@ -45,12 +45,40 @@ public final class SearchResult implements Comparable<SearchResult> {
     private final double synonymScore;
     private final double metadataScore;
     private final double fuzzyScore;
+    private final double relationScore;
     private final List<String> explanations;
     private final List<String> matchedTerms;
     private final FreshnessStatus freshnessStatus;
 
     /**
-     * Constructs a SearchResult with all constituent scoring signals and explanations.
+     * Full constructor with all constituent scoring signals (including relationScore) and explanations.
+     */
+    public SearchResult(
+            Memory memory,
+            double finalScore,
+            double textScore,
+            double synonymScore,
+            double metadataScore,
+            double fuzzyScore,
+            double relationScore,
+            List<String> explanations,
+            List<String> matchedTerms,
+            FreshnessStatus freshnessStatus
+    ) {
+        this.memory = Objects.requireNonNull(memory, "memory cannot be null");
+        this.finalScore = Math.max(0.0, Math.min(1.0, finalScore));
+        this.textScore = Math.max(0.0, Math.min(1.0, textScore));
+        this.synonymScore = Math.max(0.0, Math.min(1.0, synonymScore));
+        this.metadataScore = Math.max(0.0, Math.min(1.0, metadataScore));
+        this.fuzzyScore = Math.max(0.0, Math.min(1.0, fuzzyScore));
+        this.relationScore = Math.max(0.0, Math.min(1.0, relationScore));
+        this.explanations = Collections.unmodifiableList(new ArrayList<>(explanations != null ? explanations : Collections.emptyList()));
+        this.matchedTerms = Collections.unmodifiableList(new ArrayList<>(matchedTerms != null ? matchedTerms : Collections.emptyList()));
+        this.freshnessStatus = (freshnessStatus != null) ? freshnessStatus : calculateFreshness(memory);
+    }
+
+    /**
+     * Backward-compatible constructor defaulting relationScore to 0.0.
      */
     public SearchResult(
             Memory memory,
@@ -63,15 +91,7 @@ public final class SearchResult implements Comparable<SearchResult> {
             List<String> matchedTerms,
             FreshnessStatus freshnessStatus
     ) {
-        this.memory = Objects.requireNonNull(memory, "memory cannot be null");
-        this.finalScore = Math.max(0.0, Math.min(1.0, finalScore));
-        this.textScore = Math.max(0.0, Math.min(1.0, textScore));
-        this.synonymScore = Math.max(0.0, Math.min(1.0, synonymScore));
-        this.metadataScore = Math.max(0.0, Math.min(1.0, metadataScore));
-        this.fuzzyScore = Math.max(0.0, Math.min(1.0, fuzzyScore));
-        this.explanations = Collections.unmodifiableList(new ArrayList<>(explanations != null ? explanations : Collections.emptyList()));
-        this.matchedTerms = Collections.unmodifiableList(new ArrayList<>(matchedTerms != null ? matchedTerms : Collections.emptyList()));
-        this.freshnessStatus = (freshnessStatus != null) ? freshnessStatus : calculateFreshness(memory);
+        this(memory, finalScore, textScore, synonymScore, metadataScore, fuzzyScore, 0.0, explanations, matchedTerms, freshnessStatus);
     }
 
     /**
@@ -127,6 +147,10 @@ public final class SearchResult implements Comparable<SearchResult> {
         return fuzzyScore;
     }
 
+    public double getRelationScore() {
+        return relationScore;
+    }
+
     public List<String> getExplanations() {
         return explanations;
     }
@@ -145,7 +169,6 @@ public final class SearchResult implements Comparable<SearchResult> {
     @Override
     public int compareTo(SearchResult other) {
         if (other == null) return -1;
-        // Higher score comes first (descending)
         return Double.compare(other.finalScore, this.finalScore);
     }
 
@@ -167,6 +190,7 @@ public final class SearchResult implements Comparable<SearchResult> {
         return "SearchResult{" +
                 "id='" + memory.getId() + '\'' +
                 ", score=" + String.format(java.util.Locale.ROOT, "%.3f", finalScore) +
+                ", relation=" + String.format(java.util.Locale.ROOT, "%.3f", relationScore) +
                 ", freshness=" + freshnessStatus +
                 ", explanations=" + explanations +
                 '}';

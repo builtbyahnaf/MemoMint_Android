@@ -15,32 +15,37 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import dev.builtbyahnaf.memomint.data.repository.ContextRepository;
 import dev.builtbyahnaf.memomint.data.repository.SearchRepository;
 import dev.builtbyahnaf.memomint.domain.model.Memory;
 import dev.builtbyahnaf.memomint.domain.model.MemoryType;
 import dev.builtbyahnaf.memomint.domain.retrieval.FuzzyMatcher;
 import dev.builtbyahnaf.memomint.domain.retrieval.QueryNormalizer;
+import dev.builtbyahnaf.memomint.domain.retrieval.RelationshipExpander;
 import dev.builtbyahnaf.memomint.domain.retrieval.RelevanceScorer;
 import dev.builtbyahnaf.memomint.domain.retrieval.SearchResult;
 
 /**
- * Application service coordinating the deterministic 7-stage retrieval pipeline.
+ * Application service coordinating the deterministic retrieval pipeline with Phase 3 relationship graph expansion.
  *
- * <h2>Purpose & Architectural Invariants (Section 12 & Phase 2 Plan §2)</h2>
+ * <h2>Purpose &amp; Architectural Invariants (Section 12 &amp; Phase 3 Plan)</h2>
  * <p>In accordance with Layer B (Application Services), this service coordinates candidate queries,
- * synonym expansion, fuzzy typo matching, hybrid score calculation, and verifiable explanation generation.
- * It ensures all heavy search computation and database I/O run off the UI thread (NFR-02, NFR-03).</p>
+ * synonym expansion, fuzzy typo matching, knowledge-graph depth-1 relationship hops, hybrid score calculation,
+ * and verifiable explanation generation. It ensures all heavy search computation and database I/O run off the UI thread (NFR-02, NFR-03).</p>
  *
  * <h2>Pipeline Stages</h2>
  * <ol>
- *   <li><b>1. Normalization & Tokenization:</b> {@link QueryNormalizer} strips punctuation, normalizes
+ *   <li><b>1. Normalization &amp; Tokenization:</b> {@link QueryNormalizer} strips punctuation, normalizes
  *       Unicode, folds case, extracts substantive content tokens, and classifies intent.</li>
- *   <li><b>2. Synonym & Concept Expansion:</b> {@link dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary}
- *       expands query tokens into bidirectional equivalent sets (e.g. "backup" → "spare").</li>
+ *   <li><b>2. Synonym &amp; Concept Expansion:</b> {@link dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary}
+ *       expands query tokens into bidirectional equivalent sets (e.g. "backup" &rarr; "spare").</li>
  *   <li><b>3. Candidate Retrieval:</b> Retrieves candidate memories from SQLite FTS5 (BM25 ranking),
  *       metadata matching, and active memory pools.</li>
- *   <li><b>4. Scoring & Normalization:</b> {@link RelevanceScorer} combines FTS text matches ($S_{\text{text}}$),
- *       synonym matches ($S_{\text{synonym}}$), metadata alignment ($S_{\text{meta}}$), and fuzzy matches ($S_{\text{fuzzy}}$).</li>
+ *   <li><b>3b. Relationship Graph Expansion:</b> {@link RelationshipExpander} traverses depth-1 {@link dev.builtbyahnaf.memomint.domain.context.MemoryRelation}
+ *       edges to discover linked memories (e.g. items in the same location).</li>
+ *   <li><b>4. Scoring &amp; Normalization:</b> {@link RelevanceScorer} combines FTS text matches ($S_{\text{text}}$),
+ *       synonym matches ($S_{\text{synonym}}$), metadata alignment ($S_{\text{meta}}$), fuzzy matches ($S_{\text{fuzzy}}$),
+ *       and relation graph matches ($S_{\text{relation}}$).</li>
  *   <li><b>5. Relevance vs Trust Separation:</b> Freshness status is assigned independently without corrupting semantic rank.</li>
  *   <li><b>6. Explanation Generation:</b> Provenance tags are constructed describing actual matched signals.</li>
  *   <li><b>7. Ranked Result Delivery:</b> Candidates are sorted descending by composite score and returned.</li>
@@ -63,6 +68,8 @@ public class SearchService {
     }
 
     private final SearchRepository searchRepository;
+    private final ContextRepository contextRepository;
+    private final RelationshipExpander relationshipExpander;
     private final QueryNormalizer normalizer;
     private final dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary synonymDictionary;
     private final FuzzyMatcher fuzzyMatcher;
@@ -76,6 +83,8 @@ public class SearchService {
     public SearchService(SearchRepository searchRepository) {
         this(
                 searchRepository,
+                null,
+                null,
                 new QueryNormalizer(),
                 new dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary(),
                 new FuzzyMatcher(),
@@ -86,7 +95,28 @@ public class SearchService {
     }
 
     /**
-     * Constructor allowing injection of custom executors (e.g. for testing).
+     * Overload accepting context repository and relationship expander for Phase 3 graph search.
+     */
+    public SearchService(
+            SearchRepository searchRepository,
+            ContextRepository contextRepository,
+            RelationshipExpander relationshipExpander
+    ) {
+        this(
+                searchRepository,
+                contextRepository,
+                relationshipExpander,
+                new QueryNormalizer(),
+                new dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary(),
+                new FuzzyMatcher(),
+                new RelevanceScorer(),
+                Executors.newSingleThreadExecutor(),
+                new Handler(Looper.getMainLooper())::post
+        );
+    }
+
+    /**
+     * Constructor allowing injection of custom executors (e.g. for testing) without context repo.
      */
     public SearchService(
             SearchRepository searchRepository,
@@ -97,7 +127,36 @@ public class SearchService {
             Executor backgroundExecutor,
             Executor callbackExecutor
     ) {
+        this(
+                searchRepository,
+                null,
+                null,
+                normalizer,
+                synonymDictionary,
+                fuzzyMatcher,
+                relevanceScorer,
+                backgroundExecutor,
+                callbackExecutor
+        );
+    }
+
+    /**
+     * Full constructor allowing complete injection of all pipeline components.
+     */
+    public SearchService(
+            SearchRepository searchRepository,
+            ContextRepository contextRepository,
+            RelationshipExpander relationshipExpander,
+            QueryNormalizer normalizer,
+            dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary synonymDictionary,
+            FuzzyMatcher fuzzyMatcher,
+            RelevanceScorer relevanceScorer,
+            Executor backgroundExecutor,
+            Executor callbackExecutor
+    ) {
         this.searchRepository = Objects.requireNonNull(searchRepository, "searchRepository cannot be null");
+        this.contextRepository = contextRepository;
+        this.relationshipExpander = relationshipExpander;
         this.normalizer = Objects.requireNonNull(normalizer, "normalizer cannot be null");
         this.synonymDictionary = Objects.requireNonNull(synonymDictionary, "synonymDictionary cannot be null");
         this.fuzzyMatcher = Objects.requireNonNull(fuzzyMatcher, "fuzzyMatcher cannot be null");
@@ -124,7 +183,7 @@ public class SearchService {
     }
 
     /**
-     * Synchronously executes the 7-stage retrieval pipeline.
+     * Synchronously executes the retrieval pipeline.
      * Safe to invoke on background threads, in workers, or during unit test execution.
      *
      * @param rawQuery raw search text
@@ -150,7 +209,6 @@ public class SearchService {
         }
 
         // Stage 3: Candidate Retrieval
-        // Assemble FTS query: content tokens + expanded synonyms
         StringBuilder ftsQueryBuilder = new StringBuilder();
         for (String term : allQueryTerms) {
             if (ftsQueryBuilder.length() > 0) ftsQueryBuilder.append(" ");
@@ -177,11 +235,25 @@ public class SearchService {
             }
         }
 
+        // Stage 3b: Relationship Graph Hop Expansion
+        Map<String, Double> relationScores = new HashMap<>();
+        if (relationshipExpander != null && contextRepository != null) {
+            relationshipExpander.expandCandidates(candidateMemories, relationScores, contextRepository, null);
+        }
+
         // Stage 4 & 5 & 6: Score Normalization, Trust Separation, and Explanation Generation
         List<SearchResult> scoredResults = new ArrayList<>();
 
         for (Memory memory : candidateMemories.values()) {
-            SearchResult result = scoreCandidate(memory, normalized, expansions, ftsBm25Scores.get(memory.getId()));
+            Double sRel = relationScores.get(memory.getId());
+            double relationScore = (sRel != null) ? sRel : 0.0;
+            SearchResult result = scoreCandidate(
+                    memory,
+                    normalized,
+                    expansions,
+                    ftsBm25Scores.get(memory.getId()),
+                    relationScore
+            );
             if (result.getFinalScore() >= MINIMUM_CONFIDENCE_THRESHOLD) {
                 scoredResults.add(result);
             }
@@ -200,7 +272,8 @@ public class SearchService {
             Memory memory,
             QueryNormalizer.NormalizedQuery query,
             Map<String, Set<String>> expansions,
-            Double rawBm25
+            Double rawBm25,
+            double sRelation
     ) {
         List<String> contentTokens = query.getContentTokens();
         String fullMemoryText = ((memory.getTitle() != null ? memory.getTitle() + " " : "")
@@ -225,8 +298,6 @@ public class SearchService {
             }
         }
 
-        // Also capture any other query tokens (and raw query string) for substring matching
-        // (e.g., searching for "air" against "Airpods" adds "air" to matchedTerms for visual highlighting)
         for (String token : query.getAllTokens()) {
             if (fullMemoryText.contains(token) && !matchedTerms.contains(token)) {
                 matchedTerms.add(token);
@@ -239,7 +310,6 @@ public class SearchService {
 
         double sText;
         if (rawBm25 != null) {
-            // Normalize FTS5 BM25 score
             sText = RelevanceScorer.normalizeBm25(rawBm25);
         } else {
             sText = RelevanceScorer.computeTermOverlapRatio(exactMatches, contentTokens.size());
@@ -290,13 +360,12 @@ public class SearchService {
             for (String qToken : contentTokens) {
                 if (titleLower.contains(qToken)) {
                     sMeta = Math.min(1.0, sMeta + 0.30);
-                    // Match in title is highlighted directly in the card; no redundant "Matched memory title" explanation text
                     break;
                 }
             }
         }
 
-        // Signal D: Fuzzy Matching (for content tokens that didn't match exactly or as synonyms)
+        // Signal D: Fuzzy Matching
         double maxFuzzySim = 0.0;
         List<String> fuzzyExplanations = new ArrayList<>();
 
@@ -319,8 +388,13 @@ public class SearchService {
             explanations.add("Fuzzy match: " + String.join(", ", fuzzyExplanations));
         }
 
-        // Combine signals via RelevanceScorer
-        double finalScore = relevanceScorer.computeFinalScore(sText, sSynonym, sMeta, sFuzzy);
+        // Signal E: Relationship graph match explanation
+        if (sRelation > 0.0) {
+            explanations.add("Related memory match (graph hop)");
+        }
+
+        // Combine all 5 signals via RelevanceScorer
+        double finalScore = relevanceScorer.computeFinalScore(sText, sSynonym, sMeta, sFuzzy, sRelation);
 
         // Freshness status calculation
         SearchResult.FreshnessStatus freshness = SearchResult.calculateFreshness(memory);
@@ -332,6 +406,7 @@ public class SearchService {
                 sSynonym,
                 sMeta,
                 sFuzzy,
+                sRelation,
                 explanations,
                 matchedTerms,
                 freshness

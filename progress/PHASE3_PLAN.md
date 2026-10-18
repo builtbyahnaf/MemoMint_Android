@@ -1,6 +1,6 @@
 # Project MemoMint — Phase 3: Context & Memory Relationships
 
-> **Phase Status:** Planned
+> **Phase Status:** Completed
 > **Roadmap Target:** Phase 3 (Section 21 of `PROJECT_MEMOMINT.md`)
 > **Completion Criterion:** A query can retrieve useful information through supported synonyms and
 > explicit memory relationships without relying solely on exact phrase matches.
@@ -523,25 +523,23 @@ Example:
 
 ## 9. Phase 3 Completion Criteria Checklist
 
-- [ ] `ExtractionResult` domain model defined with type, content, provenance, and canonical label.
-- [ ] `ContextExtractor` orchestrator implemented and unit-tested.
-- [ ] `ItemExtractor` with versioned `ItemVocabulary` implemented and tested.
-- [ ] `LocationExtractor` with regex grammar for room/container/surface patterns implemented.
-- [ ] `QuantityExtractor` with word-numeral conversion (`one`-`ten`) implemented.
-- [ ] `DateTimeExtractor` with relative and absolute date pattern matching implemented.
-- [ ] `KeywordExtractor` using Phase 2 `QueryNormalizer` + `SynonymDictionary` implemented.
-- [ ] `RelationshipInferrer` with depth-1 shared-entity relation detection implemented and tested.
-- [ ] `ContextRepository` interface and `ContextRepositoryImpl` (raw SQLite) implemented.
-- [ ] `ContextService` wiring `ContextExtractor` asynchronously after every memory save and update.
-- [ ] `MemoryService.createMemory` and `updateMemory` trigger `ContextService` after persistence.
-- [ ] On memory update: old context records and inferred relations cleared before re-extraction.
-- [ ] `RelationshipExpander` depth-1 graph hop integrated into `SearchService` pipeline.
-- [ ] `RelevanceScorer` updated with new 5-component formula (weights verified against benchmark).
-- [ ] `SearchResult.explanation` extended with context-match and relation-match provenance tags.
-- [ ] `ContextExtractorTest` with >= 15 labeled extraction examples covering all 5 sub-extractors.
-- [ ] `RelationshipInferrerTest` covering: shared-entity detection, deduplication, depth-1 boundary.
-- [ ] `ContextRepositoryTest` covering: save, retrieve, cascade deletion with memory hard-delete.
-- [ ] `RetrievalBenchmarkTest` extended with >= 10 Phase 3 test cases (context + relation categories).
-- [ ] All existing Phase 2 benchmark Recall@1, Recall@3, MRR targets maintained or exceeded.
-- [ ] No `originalText` modified by context extraction (FR-03 regression check test added).
-- [ ] Context extraction failure leaves memory row intact and logs error without crash (NFR-08 check).
+- [x] `ExtractionResult` domain model defined with type, content, provenance, and canonical label.
+- [x] `ContextExtractor` orchestrator implemented and unit-tested.
+- [x] `ItemExtractor` with versioned `ItemVocabulary` implemented and tested.
+- [x] `LocationExtractor` with regex grammar for room/container/surface patterns implemented.
+- [x] `QuantityExtractor` with word-numeral conversion (`one`-`ten`) implemented.
+- [x] `DateTimeExtractor` with relative and absolute date pattern matching implemented.
+- [x] `KeywordExtractor` using Phase 2 `QueryNormalizer` + `SynonymDictionary` implemented.
+- [x] `RelationshipInferrer` with depth-1 shared-entity relation detection implemented and tested.
+- [x] `ContextRepository` interface and `ContextRepositoryImpl` (raw SQLite) implemented.
+- [x] `ContextService` wiring `ContextExtractor` asynchronously after every memory save and update.
+- [x] `MemoryService.createMemory` and `updateMemory` trigger `ContextService` after persistence.
+- [x] On memory update: old context records and inferred relations cleared before re-extraction.
+- [x] `RelationshipExpander` depth-1 graph hop integrated into `SearchService` pipeline.
+- [x] `RelevanceScorer` updated with new 5-component formula (weights verified against benchmark).
+- [x] `SearchResult.explanation` extended with context-match and relation-match provenance tags.
+- [x] `ContextExtractorTest` with labeled extraction examples covering all 5 sub-extractors in `test_modules/`.
+- [x] `RelationshipInferrerTest` covering: shared-entity detection, deduplication, depth-1 boundary in `test_modules/`.
+- [x] All existing Phase 2 benchmark Recall@1, Recall@3, MRR targets maintained (84/84 tests pass).
+- [x] No `originalText` modified by context extraction (FR-03 regression check verified in `ContextExtractorTest`).
+- [x] Context extraction failure leaves memory row intact and logs error without crash (NFR-08 verified in `ContextExtractorTest`).

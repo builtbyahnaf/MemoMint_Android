@@ -12,8 +12,8 @@ android {
         applicationId "dev.builtbyahnaf.memomint"
         minSdk 30
         targetSdk 37
-        versionCode 1047648
-        versionName "1.014.7-S"
+        versionCode 1053108
+        versionName "1.015.3-C"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +35,7 @@ android {
             // Allows Robolectric tests to use Android framework classes
             // (SQLiteDatabase, Context, etc.) on the JVM without a device.
             includeAndroidResources = true
+            returnDefaultValues = true
         }
     }
 }

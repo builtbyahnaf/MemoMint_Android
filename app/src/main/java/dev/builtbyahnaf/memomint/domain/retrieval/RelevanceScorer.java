@@ -7,14 +7,14 @@ import java.util.Locale;
  *
  * <h2>Problem Solved</h2>
  * <p>Candidate retrieval produces disparate signals with differing scales:
- * unbounded BM25 scores from SQLite full-text search, binary term overlaps from synonym expansions,
- * categorical metadata matches, and character-level edit distance ratios from fuzzy matching.
+ * unbounded BM25 scores from SQLite full-text search, term overlaps from synonym expansions,
+ * categorical metadata matches, graph-hop relationship connections, and character-level edit distance ratios from fuzzy matching.
  * Directly summing these signals leads to one dominating others. This scorer normalizes each component
  * into a uniform $[0.0, 1.0]$ range before applying linear combination weights.</p>
  *
- * <h2>Scoring Formula (Section 12.3 & Phase 2 Plan §3.5)</h2>
+ * <h2>Scoring Formula (Section 12.3 &amp; Phase 3 Plan)</h2>
  * <pre>
- *   S_final = 0.50 * S_text + 0.30 * S_synonym + 0.15 * S_meta + 0.05 * S_fuzzy
+ *   S_final = 0.45 * S_text + 0.25 * S_synonym + 0.15 * S_meta + 0.10 * S_relation + 0.05 * S_fuzzy
  * </pre>
  *
  * <h2>Normalization Methods</h2>
@@ -29,44 +29,51 @@ import java.util.Locale;
  *       weighted by equivalence confidence.</li>
  *   <li><b>Metadata Score:</b> Alignment between query intent (e.g., location lookup) and memory attributes
  *       (e.g., {@code MemoryType.PHYSICAL_ITEM} or {@code LOCATION}), plus title matches.</li>
+ *   <li><b>Relation Score:</b> Inferred depth-1 knowledge graph connection score ($S_{\text{relation}}$) attenuated by edge confidence.</li>
  *   <li><b>Fuzzy Score:</b> Highest Damerau-Levenshtein similarity achieved for non-exact terms ($\ge 0.75$).</li>
- * </ul>
- *
- * <h2>Worked Example (Phase 2 Plan §4)</h2>
- * <p>Query: "Where did I put the backup cable for my desk?"</p>
- * <ul>
- *   <li>$S_{\text{text}} = 0.80$ (exact matches on "cable", "desk")</li>
- *   <li>$S_{\text{synonym}} = 0.90$ ("backup" matched stored "spare")</li>
- *   <li>$S_{\text{meta}} = 0.70$ (matched PHYSICAL_ITEM memory type for location intent)</li>
- *   <li>$S_{\text{fuzzy}} = 0.0$ (no typos detected)</li>
- *   <li>$S_{\text{final}} = 0.50(0.80) + 0.30(0.90) + 0.15(0.70) + 0.05(0.0) = 0.40 + 0.27 + 0.105 = 0.775$</li>
  * </ul>
  */
 public final class RelevanceScorer {
 
-    public static final double DEFAULT_WEIGHT_TEXT = 0.50;
-    public static final double DEFAULT_WEIGHT_SYNONYM = 0.30;
+    public static final double DEFAULT_WEIGHT_TEXT = 0.45;
+    public static final double DEFAULT_WEIGHT_SYNONYM = 0.25;
     public static final double DEFAULT_WEIGHT_META = 0.15;
+    public static final double DEFAULT_WEIGHT_RELATION = 0.10;
     public static final double DEFAULT_WEIGHT_FUZZY = 0.05;
 
     private final double weightText;
     private final double weightSynonym;
     private final double weightMeta;
     private final double weightFuzzy;
+    private final double weightRelation;
 
     /**
-     * Constructs a scorer with standard baseline weights.
+     * Constructs a scorer with standard baseline weights for Phase 3.
      */
     public RelevanceScorer() {
-        this(DEFAULT_WEIGHT_TEXT, DEFAULT_WEIGHT_SYNONYM, DEFAULT_WEIGHT_META, DEFAULT_WEIGHT_FUZZY);
+        this(DEFAULT_WEIGHT_TEXT, DEFAULT_WEIGHT_SYNONYM, DEFAULT_WEIGHT_META, DEFAULT_WEIGHT_FUZZY, DEFAULT_WEIGHT_RELATION);
     }
 
     /**
-     * Constructs a scorer with custom weights for experimental tuning.
+     * Backward-compatible constructor for 4-component scoring without relation weight.
      * Weights must sum to approximately 1.0.
      */
     public RelevanceScorer(double weightText, double weightSynonym, double weightMeta, double weightFuzzy) {
-        double sum = weightText + weightSynonym + weightMeta + weightFuzzy;
+        this(weightText, weightSynonym, weightMeta, weightFuzzy, 0.0);
+    }
+
+    /**
+     * Constructs a scorer with custom weights for experimental tuning across all 5 signals.
+     * Weights must sum to approximately 1.0.
+     */
+    public RelevanceScorer(
+            double weightText,
+            double weightSynonym,
+            double weightMeta,
+            double weightFuzzy,
+            double weightRelation
+    ) {
+        double sum = weightText + weightSynonym + weightMeta + weightFuzzy + weightRelation;
         if (Math.abs(sum - 1.0) > 0.01) {
             throw new IllegalArgumentException(String.format(
                     Locale.ROOT, "Scoring weights must sum to 1.0 (got %.3f)", sum));
@@ -75,6 +82,7 @@ public final class RelevanceScorer {
         this.weightSynonym = weightSynonym;
         this.weightMeta = weightMeta;
         this.weightFuzzy = weightFuzzy;
+        this.weightRelation = weightRelation;
     }
 
     public double getWeightText() {
@@ -93,8 +101,12 @@ public final class RelevanceScorer {
         return weightFuzzy;
     }
 
+    public double getWeightRelation() {
+        return weightRelation;
+    }
+
     /**
-     * Combines four normalized signal scores $[0.0, 1.0]$ into a final composite relevance score $[0.0, 1.0]$.
+     * Backward-compatible scoring method combining four signals, setting relation score to 0.0.
      *
      * @param sText    normalized text match / BM25 score
      * @param sSynonym normalized synonym match score
@@ -103,12 +115,31 @@ public final class RelevanceScorer {
      * @return composite score bounded between 0.0 and 1.0
      */
     public double computeFinalScore(double sText, double sSynonym, double sMeta, double sFuzzy) {
+        return computeFinalScore(sText, sSynonym, sMeta, sFuzzy, 0.0);
+    }
+
+    /**
+     * Combines five normalized signal scores $[0.0, 1.0]$ into a final composite relevance score $[0.0, 1.0]$.
+     *
+     * @param sText     normalized text match / BM25 score
+     * @param sSynonym  normalized synonym match score
+     * @param sMeta     normalized metadata match score
+     * @param sFuzzy    normalized fuzzy match score
+     * @param sRelation normalized knowledge graph relation score
+     * @return composite score bounded between 0.0 and 1.0
+     */
+    public double computeFinalScore(double sText, double sSynonym, double sMeta, double sFuzzy, double sRelation) {
         double text = clamp(sText);
         double syn = clamp(sSynonym);
         double meta = clamp(sMeta);
         double fuzzy = clamp(sFuzzy);
+        double rel = clamp(sRelation);
 
-        double composite = (weightText * text) + (weightSynonym * syn) + (weightMeta * meta) + (weightFuzzy * fuzzy);
+        double composite = (weightText * text)
+                + (weightSynonym * syn)
+                + (weightMeta * meta)
+                + (weightFuzzy * fuzzy)
+                + (weightRelation * rel);
         return clamp(composite);
     }
 
@@ -127,7 +158,6 @@ public final class RelevanceScorer {
         if (magnitude <= 0.00001) {
             return 0.0;
         }
-        // (2 / Math.PI) * atan(magnitude)
         double normalized = (2.0 / Math.PI) * Math.atan(magnitude);
         return clamp(normalized);
     }

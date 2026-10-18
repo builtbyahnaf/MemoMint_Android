@@ -12,7 +12,8 @@ import static org.junit.Assert.fail;
  *
  * <h2>Verifications</h2>
  * <ul>
- *   <li>Linear combination with default weights (0.50, 0.30, 0.15, 0.05).</li>
+ *   <li>Linear combination with Phase 3 default weights (0.45, 0.25, 0.15, 0.05, 0.10).</li>
+ *   <li>Backward-compatible 4-component scoring with relation score defaulted to 0.0.</li>
  *   <li>Boundary clamping strictly within $[0.0, 1.0]$.</li>
  *   <li>Arctan normalization for raw SQLite BM25 scores.</li>
  *   <li>Term overlap ratio calculations.</li>
@@ -30,21 +31,28 @@ public class RelevanceScorerTest {
 
     @Test
     public void computeFinalScore_combinesSignalsAccordingToFormula() {
-        // Spec Example (Phase 2 Plan §4):
-        // S_text = 0.80, S_syn = 0.90, S_meta = 0.70, S_fuzzy = 0.0
-        // Score = 0.50(0.80) + 0.30(0.90) + 0.15(0.70) + 0.05(0.0) = 0.40 + 0.27 + 0.105 = 0.775
-        double score = scorer.computeFinalScore(0.80, 0.90, 0.70, 0.0);
-        assertEquals(0.775, score, 0.001);
+        // Phase 3 5-component scoring formula:
+        // S_text = 0.80, S_syn = 0.90, S_meta = 0.70, S_fuzzy = 0.0, S_relation = 0.85
+        // Score = 0.45(0.80) + 0.25(0.90) + 0.15(0.70) + 0.05(0.0) + 0.10(0.85)
+        //       = 0.360 + 0.225 + 0.105 + 0.0 + 0.085 = 0.775
+        double score5 = scorer.computeFinalScore(0.80, 0.90, 0.70, 0.0, 0.85);
+        assertEquals(0.775, score5, 0.001);
+
+        // Backward-compat 4-argument overload (sets sRelation = 0.0):
+        // Score = 0.45(0.80) + 0.25(0.90) + 0.15(0.70) + 0.05(0.0) + 0.10(0.0)
+        //       = 0.360 + 0.225 + 0.105 = 0.690
+        double score4 = scorer.computeFinalScore(0.80, 0.90, 0.70, 0.0);
+        assertEquals(0.690, score4, 0.001);
     }
 
     @Test
     public void computeFinalScore_clampsValuesBetweenZeroAndOne() {
-        // Upper overflow test
-        double overflow = scorer.computeFinalScore(1.5, 2.0, 1.2, 1.1);
+        // Upper overflow test with all 5 signals
+        double overflow = scorer.computeFinalScore(1.5, 2.0, 1.2, 1.1, 1.4);
         assertEquals(1.0, overflow, 0.001);
 
-        // Negative underflow test
-        double underflow = scorer.computeFinalScore(-0.5, -1.0, 0.0, 0.0);
+        // Negative underflow test with all 5 signals
+        double underflow = scorer.computeFinalScore(-0.5, -1.0, 0.0, 0.0, -0.2);
         assertEquals(0.0, underflow, 0.001);
     }
 
@@ -74,14 +82,15 @@ public class RelevanceScorerTest {
 
     @Test
     public void customWeights_validateSumConstraint() {
-        // Valid custom weights summing to 1.0
-        RelevanceScorer custom = new RelevanceScorer(0.40, 0.40, 0.10, 0.10);
+        // Valid custom weights summing to 1.0 across 5 components
+        RelevanceScorer custom = new RelevanceScorer(0.40, 0.30, 0.10, 0.10, 0.10);
         assertEquals(0.40, custom.getWeightText(), 0.001);
+        assertEquals(0.10, custom.getWeightRelation(), 0.001);
 
         // Invalid weights not summing to 1.0 must throw IllegalArgumentException
         try {
-            new RelevanceScorer(0.50, 0.50, 0.50, 0.50);
-            fail("Expected IllegalArgumentException when weights sum to 2.0");
+            new RelevanceScorer(0.50, 0.50, 0.50, 0.50, 0.50);
+            fail("Expected IllegalArgumentException when weights sum to 2.5");
         } catch (IllegalArgumentException expected) {
             // Success
         }

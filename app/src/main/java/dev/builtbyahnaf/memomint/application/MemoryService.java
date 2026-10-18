@@ -89,6 +89,7 @@ public class MemoryService {
     private final MemoryRepository repository;
     private final Executor backgroundExecutor;
     private final Executor callbackExecutor;
+    private ContextService contextService;
 
     /**
      * Default constructor initializing standard background executor and main thread handler.
@@ -130,6 +131,24 @@ public class MemoryService {
         this.repository = repository;
         this.backgroundExecutor = backgroundExecutor;
         this.callbackExecutor = callbackExecutor;
+    }
+
+    /**
+     * Injects the optional {@link ContextService} for asynchronous context extraction.
+     *
+     * @param contextService the context service; may be null
+     */
+    public void setContextService(ContextService contextService) {
+        this.contextService = contextService;
+    }
+
+    /**
+     * Gets the currently configured {@link ContextService}.
+     *
+     * @return current context service or null
+     */
+    public ContextService getContextService() {
+        return contextService;
     }
 
     // =========================================================================
@@ -189,6 +208,9 @@ public class MemoryService {
         );
 
         repository.save(memory);
+        if (contextService != null) {
+            contextService.extractContextAsync(memory);
+        }
         return memory;
     }
 
@@ -225,6 +247,9 @@ public class MemoryService {
         existing.setUpdatedAt(now);
 
         repository.update(existing);
+        if (contextService != null) {
+            contextService.extractContextAsync(existing);
+        }
         return existing;
     }
 
