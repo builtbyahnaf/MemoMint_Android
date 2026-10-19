@@ -41,9 +41,10 @@ public final class DatabaseConstants {
      * <ul>
      *   <li>Version 1: Initial schema (Phase 1 — all core tables).</li>
      *   <li>Version 2: Full-text search virtual table (memories_fts) and sync triggers (Phase 2).</li>
+     *   <li>Version 3: Document full-text search virtual table (files_fts) for Phase 4 file indexing.</li>
      * </ul>
      */
-    public static final int DATABASE_VERSION = 2;
+    public static final int DATABASE_VERSION = 3;
 
     // =========================================================================
     // Table: memories
@@ -80,6 +81,22 @@ public final class DatabaseConstants {
         public static final String COL_ID            = "id";
         public static final String COL_TITLE         = "title";
         public static final String COL_ORIGINAL_TEXT = "original_text";
+    }
+
+    // =========================================================================
+    // Table: files_fts (FTS5 document text search index, Schema v3)
+    // =========================================================================
+
+    /** Constants for the {@code files_fts} virtual table (Phase 4). */
+    public static final class FilesFts {
+        private FilesFts() {}
+
+        public static final String TABLE = "files_fts";
+
+        public static final String COL_ID      = "id";
+        public static final String COL_FILE_ID = "file_id";
+        public static final String COL_TITLE   = "title";
+        public static final String COL_CONTENT = "content";
     }
 
     // =========================================================================
@@ -589,5 +606,50 @@ public final class DatabaseConstants {
                         + MemoriesFts.COL_ID + ", " + MemoriesFts.COL_TITLE + ", " + MemoriesFts.COL_ORIGINAL_TEXT + ")"
                         + " SELECT " + Memories.COL_ID + ", " + Memories.COL_TITLE + ", " + Memories.COL_ORIGINAL_TEXT
                         + " FROM " + Memories.TABLE;
+
+        // =====================================================================
+        // Schema Version 3: Document Full-Text Search (files_fts)
+        // =====================================================================
+
+        /**
+         * Creates the {@code files_fts} virtual table using FTS5 for fast full-text
+         * indexing and BM25 ranking across document contents (Schema Version 3).
+         */
+        public static final String CREATE_FILES_FTS5 =
+                "CREATE VIRTUAL TABLE IF NOT EXISTS " + FilesFts.TABLE + " USING fts5("
+                        + FilesFts.COL_ID + " UNINDEXED, "
+                        + FilesFts.COL_FILE_ID + " UNINDEXED, "
+                        + FilesFts.COL_TITLE + ", "
+                        + FilesFts.COL_CONTENT + ", "
+                        + "tokenize = 'unicode61 remove_diacritics 2'"
+                        + ")";
+
+        /**
+         * Creates the {@code files_fts} virtual table using FTS4 as fallback.
+         */
+        public static final String CREATE_FILES_FTS4 =
+                "CREATE VIRTUAL TABLE IF NOT EXISTS " + FilesFts.TABLE + " USING fts4("
+                        + FilesFts.COL_ID + ", "
+                        + FilesFts.COL_FILE_ID + ", "
+                        + FilesFts.COL_TITLE + ", "
+                        + FilesFts.COL_CONTENT + ", "
+                        + "tokenize=unicode61"
+                        + ")";
+
+        /**
+         * Creates the {@code files_fts} virtual table using FTS3 as ultra-compatible fallback.
+         */
+        public static final String CREATE_FILES_FTS3 =
+                "CREATE VIRTUAL TABLE IF NOT EXISTS " + FilesFts.TABLE + " USING fts3("
+                        + FilesFts.COL_ID + ", "
+                        + FilesFts.COL_FILE_ID + ", "
+                        + FilesFts.COL_TITLE + ", "
+                        + FilesFts.COL_CONTENT
+                        + ")";
+
+        /**
+         * Alias pointing to preferred FTS definition.
+         */
+        public static final String CREATE_FILES_FTS = CREATE_FILES_FTS5;
     }
 }

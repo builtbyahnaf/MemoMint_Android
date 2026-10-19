@@ -106,13 +106,13 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
     }
 
     /**
-     * Package-private constructor for tests that need an in-memory database.
+     * Constructor for tests that need an in-memory database (or custom name).
      * Pass {@code null} as the database name to create an in-memory database.
      *
      * @param context application or test context
      * @param name    database file name, or {@code null} for an in-memory database
      */
-    MemoMintDatabase(Context context, String name) {
+    public MemoMintDatabase(Context context, String name) {
         super(context, name, /* factory= */ null, DatabaseConstants.DATABASE_VERSION);
     }
 
@@ -174,6 +174,7 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
         try {
             createVersion1Schema(db);
             createVersion2Schema(db);
+            createVersion3Schema(db);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -207,6 +208,9 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
         switch (oldVersion) {
             case 1:
                 applyMigrationV1toV2(db);
+                // fall through
+            case 2:
+                applyMigrationV2toV3(db);
                 // fall through
             default:
                 break;
@@ -464,6 +468,99 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
                 Log.w(TAG, "Could not repopulate FTS index after repair: " + e.getMessage());
             }
         }
+
+        // Check and repair files_fts if version >= 3
+        if (db.getVersion() >= 3) {
+            repairFilesFtsIfUnsupported(db);
+        }
+    }
+
+    private void repairFilesFtsIfUnsupported(SQLiteDatabase db) {
+        String existingTableSql = null;
+        try (Cursor cursor = db.rawQuery(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+                new String[]{DatabaseConstants.FilesFts.TABLE}
+        )) {
+            if (cursor != null && cursor.moveToFirst()) {
+                existingTableSql = cursor.getString(0);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to inspect sqlite_master for files_fts table: " + e.getMessage());
+            return;
+        }
+
+        if (existingTableSql == null) {
+            createVersion3Schema(db);
+            return;
+        }
+
+        boolean isFts5 = existingTableSql.toLowerCase(Locale.US).contains("using fts5");
+        boolean isFts4 = existingTableSql.toLowerCase(Locale.US).contains("using fts4");
+        boolean needsRepair = false;
+
+        if (isFts5 && !isModuleSupported(db, "fts5")) {
+            needsRepair = true;
+        } else if (isFts4 && !isModuleSupported(db, "fts4")) {
+            needsRepair = true;
+        }
+
+        if (needsRepair) {
+            try {
+                db.execSQL("DROP TABLE IF EXISTS " + DatabaseConstants.FilesFts.TABLE);
+            } catch (Exception e) {
+                try {
+                    db.execSQL("PRAGMA writable_schema = ON");
+                    db.execSQL("DELETE FROM sqlite_master WHERE tbl_name = '" + DatabaseConstants.FilesFts.TABLE + "'");
+                    db.execSQL("PRAGMA writable_schema = OFF");
+                } catch (Exception ignored) {}
+            }
+            createVersion3Schema(db);
+        }
+    }
+
+    /**
+     * Executes all DDL statements needed to create Version 3 schema extensions:
+     * the files_fts full-text search table with FTS5 -> FTS4 -> FTS3 fallback cascade.
+     */
+    private void createVersion3Schema(SQLiteDatabase db) {
+        boolean ftsCreated = false;
+
+        // 1. Preferred engine: FTS5
+        if (isModuleSupported(db, "fts5")) {
+            try {
+                db.execSQL(DatabaseConstants.Sql.CREATE_FILES_FTS5);
+                ftsCreated = true;
+                Log.i(TAG, "Initialized files_fts using SQLite FTS5");
+            } catch (Exception e) {
+                Log.w(TAG, "Failed creating files_fts FTS5 table: " + e.getMessage());
+            }
+        }
+
+        // 2. Secondary fallback: FTS4
+        if (!ftsCreated && isModuleSupported(db, "fts4")) {
+            try {
+                db.execSQL(DatabaseConstants.Sql.CREATE_FILES_FTS4);
+                ftsCreated = true;
+                Log.i(TAG, "Initialized files_fts using SQLite FTS4 fallback");
+            } catch (Exception e) {
+                Log.w(TAG, "Failed creating files_fts FTS4 table: " + e.getMessage());
+            }
+        }
+
+        // 3. Ultra-compatible fallback: FTS3
+        if (!ftsCreated && isModuleSupported(db, "fts3")) {
+            try {
+                db.execSQL(DatabaseConstants.Sql.CREATE_FILES_FTS3);
+                ftsCreated = true;
+                Log.i(TAG, "Initialized files_fts using SQLite FTS3 fallback");
+            } catch (Exception e) {
+                Log.w(TAG, "Failed creating files_fts FTS3 table: " + e.getMessage());
+            }
+        }
+
+        if (!ftsCreated) {
+            Log.w(TAG, "No SQLite FTS module available for files_fts; running in pure relational mode.");
+        }
     }
 
     /**
@@ -483,6 +580,23 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
             } catch (Exception e) {
                 Log.w(TAG, "Population of FTS during migration skipped or unsupported: " + e.getMessage());
             }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /**
+     * Applies the migration from Version 2 to Version 3.
+     *
+     * <p>Creates the files_fts full-text virtual table for document indexing.</p>
+     *
+     * @param db the database being upgraded
+     */
+    private void applyMigrationV2toV3(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            createVersion3Schema(db);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();

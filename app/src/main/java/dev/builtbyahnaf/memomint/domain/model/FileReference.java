@@ -395,7 +395,9 @@ public class FileReference {
      */
     public boolean isReadyToSearch() {
         return AccessState.ACCESSIBLE.equals(accessState)
-                && IndexingStatus.INDEXED.equals(indexingStatus);
+                && (IndexingStatus.INDEXED.equals(indexingStatus)
+                    || IndexingStatus.DONE.equals(indexingStatus)
+                    || IndexingStatus.DONE_WITHOUT_TEXT.equals(indexingStatus));
     }
 
     @Override

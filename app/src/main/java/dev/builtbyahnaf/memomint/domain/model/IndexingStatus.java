@@ -19,9 +19,24 @@ public enum IndexingStatus {
     PENDING,
 
     /**
+     * The file is currently being indexed by a background job.
+     */
+    RUNNING,
+
+    /**
      * The file was successfully indexed. Content is searchable.
      */
     INDEXED,
+
+    /**
+     * The file indexing completed successfully (alias for INDEXED).
+     */
+    DONE,
+
+    /**
+     * Document was indexed by metadata only (e.g., scanned PDF without text layer).
+     */
+    DONE_WITHOUT_TEXT,
 
     /**
      * The last indexing attempt failed (parse error, out-of-memory, etc.).

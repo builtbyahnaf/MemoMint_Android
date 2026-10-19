@@ -39,8 +39,7 @@ import dev.builtbyahnaf.memomint.domain.retrieval.SearchResult;
  * presenting:</p>
  * <ul>
  *   <li><b>Type Badge:</b> Visual differentiation based on {@link MemoryType}.</li>
- *   <li><b>Score Badge:</b> Normalized percentage match score ($[0.0, 1.0]$).</li>
- *   <li><b>Term Highlighting:</b> Bold spans highlighting matched search keywords.</li>
+ *   <li><b>Term Highlighting:</b> Bold spans highlighting matched search keywords in title and body.</li>
  *   <li><b>Transparent Explanations:</b> Explanatory provenance bullet points detailing exact matches,
  *       synonym bridges, and typo corrections.</li>
  *   <li><b>Freshness Separation:</b> Independent confirmation status badges.</li>
@@ -119,7 +118,6 @@ public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.SearchResu
     static class SearchResultViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView tvTypeBadge;
-        private final TextView tvScoreBadge;
         private final TextView tvDate;
         private final TextView tvTitle;
         private final TextView tvOriginalText;
@@ -133,7 +131,6 @@ public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.SearchResu
         public SearchResultViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTypeBadge         = itemView.findViewById(R.id.tvTypeBadge);
-            tvScoreBadge        = itemView.findViewById(R.id.tvScoreBadge);
             tvDate              = itemView.findViewById(R.id.tvDate);
             tvTitle             = itemView.findViewById(R.id.tvTitle);
             tvOriginalText      = itemView.findViewById(R.id.tvOriginalText);
@@ -152,11 +149,7 @@ public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.SearchResu
             // 1. Type Badge
             bindTypeBadge(context, memory.getType());
 
-            // 2. Score Badge
-            int percentage = (int) Math.round(result.getFinalScore() * 100);
-            tvScoreBadge.setText(percentage + "% Match");
-
-            // 3. Creation Date
+            // 2. Creation Date
             SimpleDateFormat sdf = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
             tvDate.setText(sdf.format(new Date(memory.getCreatedAt())));
 

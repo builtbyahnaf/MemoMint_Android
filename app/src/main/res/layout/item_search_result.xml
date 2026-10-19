@@ -37,18 +37,6 @@
                 android:textStyle="bold"
                 tools:text="PHYSICAL ITEM" />
 
-            <TextView
-                android:id="@+id/tvScoreBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:background="@color/badge_document_bg"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:textColor="@color/badge_document_text"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                tools:text="88% Match" />
 
             <View
                 android:layout_width="0dp"

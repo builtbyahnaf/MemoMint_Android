@@ -44,5 +44,10 @@ public enum AccessState {
     /**
      * The file is accessible but the index is out of date and needs to be rebuilt.
      */
-    REINDEX_REQUIRED
+    REINDEX_REQUIRED,
+
+    /**
+     * Alias for REINDEX_REQUIRED specified in Phase 4 design.
+     */
+    REINDEXING_REQUIRED
 }

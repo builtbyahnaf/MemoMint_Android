@@ -12,11 +12,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import dev.builtbyahnaf.memomint.data.repository.ContextRepository;
+import dev.builtbyahnaf.memomint.data.repository.FileReferenceRepository;
+import dev.builtbyahnaf.memomint.data.repository.FileSearchRepository;
 import dev.builtbyahnaf.memomint.data.repository.SearchRepository;
+import dev.builtbyahnaf.memomint.domain.model.FileReference;
+import dev.builtbyahnaf.memomint.domain.model.FileSearchResult;
 import dev.builtbyahnaf.memomint.domain.model.Memory;
 import dev.builtbyahnaf.memomint.domain.model.MemoryType;
 import dev.builtbyahnaf.memomint.domain.retrieval.FuzzyMatcher;
@@ -70,6 +75,8 @@ public class SearchService {
     private final SearchRepository searchRepository;
     private final ContextRepository contextRepository;
     private final RelationshipExpander relationshipExpander;
+    private final FileSearchRepository fileSearchRepository;
+    private final FileReferenceRepository fileReferenceRepository;
     private final QueryNormalizer normalizer;
     private final dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary synonymDictionary;
     private final FuzzyMatcher fuzzyMatcher;
@@ -83,6 +90,8 @@ public class SearchService {
     public SearchService(SearchRepository searchRepository) {
         this(
                 searchRepository,
+                null,
+                null,
                 null,
                 null,
                 new QueryNormalizer(),
@@ -106,6 +115,33 @@ public class SearchService {
                 searchRepository,
                 contextRepository,
                 relationshipExpander,
+                null,
+                null,
+                new QueryNormalizer(),
+                new dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary(),
+                new FuzzyMatcher(),
+                new RelevanceScorer(),
+                Executors.newSingleThreadExecutor(),
+                new Handler(Looper.getMainLooper())::post
+        );
+    }
+
+    /**
+     * Overload accepting file repositories for Phase 4 unified document and memory search.
+     */
+    public SearchService(
+            SearchRepository searchRepository,
+            ContextRepository contextRepository,
+            RelationshipExpander relationshipExpander,
+            FileSearchRepository fileSearchRepository,
+            FileReferenceRepository fileReferenceRepository
+    ) {
+        this(
+                searchRepository,
+                contextRepository,
+                relationshipExpander,
+                fileSearchRepository,
+                fileReferenceRepository,
                 new QueryNormalizer(),
                 new dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary(),
                 new FuzzyMatcher(),
@@ -131,6 +167,8 @@ public class SearchService {
                 searchRepository,
                 null,
                 null,
+                null,
+                null,
                 normalizer,
                 synonymDictionary,
                 fuzzyMatcher,
@@ -141,7 +179,7 @@ public class SearchService {
     }
 
     /**
-     * Full constructor allowing complete injection of all pipeline components.
+     * Constructor allowing injection of all Phase 1-3 pipeline components.
      */
     public SearchService(
             SearchRepository searchRepository,
@@ -154,9 +192,42 @@ public class SearchService {
             Executor backgroundExecutor,
             Executor callbackExecutor
     ) {
+        this(
+                searchRepository,
+                contextRepository,
+                relationshipExpander,
+                null,
+                null,
+                normalizer,
+                synonymDictionary,
+                fuzzyMatcher,
+                relevanceScorer,
+                backgroundExecutor,
+                callbackExecutor
+        );
+    }
+
+    /**
+     * Full constructor allowing complete injection of all Phase 1-4 pipeline components.
+     */
+    public SearchService(
+            SearchRepository searchRepository,
+            ContextRepository contextRepository,
+            RelationshipExpander relationshipExpander,
+            FileSearchRepository fileSearchRepository,
+            FileReferenceRepository fileReferenceRepository,
+            QueryNormalizer normalizer,
+            dev.builtbyahnaf.memomint.domain.retrieval.SynonymDictionary synonymDictionary,
+            FuzzyMatcher fuzzyMatcher,
+            RelevanceScorer relevanceScorer,
+            Executor backgroundExecutor,
+            Executor callbackExecutor
+    ) {
         this.searchRepository = Objects.requireNonNull(searchRepository, "searchRepository cannot be null");
         this.contextRepository = contextRepository;
         this.relationshipExpander = relationshipExpander;
+        this.fileSearchRepository = fileSearchRepository;
+        this.fileReferenceRepository = fileReferenceRepository;
         this.normalizer = Objects.requireNonNull(normalizer, "normalizer cannot be null");
         this.synonymDictionary = Objects.requireNonNull(synonymDictionary, "synonymDictionary cannot be null");
         this.fuzzyMatcher = Objects.requireNonNull(fuzzyMatcher, "fuzzyMatcher cannot be null");
@@ -256,6 +327,52 @@ public class SearchService {
             );
             if (result.getFinalScore() >= MINIMUM_CONFIDENCE_THRESHOLD) {
                 scoredResults.add(result);
+            }
+        }
+
+        // Phase 4: Document Retrieval (files_fts)
+        if (fileSearchRepository != null) {
+            List<FileSearchResult> fileHits = fileSearchRepository.searchFiles(rawQuery, 20);
+            for (FileSearchResult hit : fileHits) {
+                if (fileReferenceRepository != null) {
+                    FileReference ref = fileReferenceRepository.findById(hit.getFileId());
+                    if (ref != null && !ref.isReadyToSearch()) {
+                        continue; // skip inaccessible or excluded documents
+                    }
+                }
+
+                Memory docMemory = new Memory(
+                        UUID.randomUUID().toString(),
+                        MemoryType.DOCUMENT_CONTEXT,
+                        hit.getSnippet(),
+                        hit.getTitle(),
+                        System.currentTimeMillis(),
+                        System.currentTimeMillis(),
+                        dev.builtbyahnaf.memomint.domain.model.SourceType.IMPORTED,
+                        hit.getFileId(),
+                        dev.builtbyahnaf.memomint.domain.model.MemoryStatus.ACTIVE,
+                        null
+                );
+
+                List<String> explanations = new ArrayList<>();
+                explanations.add("Found in document '" + hit.getTitle() + "'");
+
+                SearchResult docResult = new SearchResult(
+                        docMemory,
+                        hit.getScore(),
+                        hit.getScore(),
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        explanations,
+                        hit.getMatchedTerms(),
+                        SearchResult.FreshnessStatus.NOT_APPLICABLE
+                );
+
+                if (docResult.getFinalScore() >= MINIMUM_CONFIDENCE_THRESHOLD) {
+                    scoredResults.add(docResult);
+                }
             }
         }
 

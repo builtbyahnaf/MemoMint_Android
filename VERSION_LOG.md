@@ -1,3 +1,101 @@
+# Version 1.016.2-D
+
+**Build:** `1062487`
+
+## Implementation Summary
+
+### 1. Scoped File Access & Offline Architecture
+
+- Integrates Android's Storage Access Framework (SAF) for user-selected files and directories.
+- Uses persisted URI permissions to maintain authorized access across application sessions.
+- Restricts document access to user-authorized locations without requiring broad filesystem permissions.
+- Keeps document parsing, indexing, and retrieval entirely on-device, with no cloud processing or heavy neural models.
+
+### 2. Multi-Format Document Parsing
+
+Introduces support for extracting searchable text from common local document formats:
+
+- **Plain text:** `.txt`, `.md`, `.json`, `.csv`
+- **Microsoft Word:** `.docx`
+- **PDF documents:** `.pdf`
+
+#### PDF Parsing — `PdfStreamTextParser`
+
+- Implements a lightweight, pure Java streaming parser for PDF text objects, including `BT`/`ET` blocks and `Tj`/`TJ` operators.
+- Supports Deflate decompression without requiring external binaries or heavyweight parsing dependencies.
+- Detects encrypted PDFs and classifies failures using `ERR_PDF_ENCRYPTED`.
+- Identifies image-only scanned PDFs when no extractable text is found, marking them as `SCANNED_NEEDS_OCR`.
+- Never fabricates document content when text extraction is unavailable.
+- Falls back to metadata indexing when parsing fails because of malformed cross-reference tables or corrupted streams.
+
+#### DOCX Parsing — `DocxSaxParser`
+
+- Parses `.docx` files as ZIP archives using standard Java ZIP streams and lightweight XML parsing.
+- Extracts paragraphs (`<w:p>`) and text runs (`<w:t>`) from `word/document.xml`.
+- Avoids heavyweight Apache POI dependencies.
+- Detects malformed ZIP entries and XML, classifies failures using `ERR_DOCX_CORRUPT`, and preserves metadata-based discoverability.
+
+#### Plain Text & Markdown Decoding
+
+- Uses UTF-8 decoding with replacement handling for invalid byte sequences.
+- Detects UTF-16LE and UTF-16BE byte-order marks.
+- Provides ISO-8859-1 as a fallback decoding strategy when required.
+
+### 3. Full-Text Document Indexing & Search
+
+- Introduces the SQLite `files_fts` virtual table for indexing document metadata and extracted content.
+- Uses BM25 ranking for relevance-based document retrieval.
+- Implements the established SQLite compatibility cascade:
+  1. **FTS5** — Full-text search with Unicode normalization and diacritic removal.
+  2. **FTS4** — Alternative full-text indexing when FTS5 is unavailable.
+  3. **FTS3** — Compatibility fallback for additional SQLite environments, including JVM/Robolectric testing.
+  4. **Relational `LIKE` queries** — Final fallback when virtual-table indexing is unavailable.
+- Detects FTS capabilities before selecting the indexing strategy.
+- Preserves document discoverability through filename, directory path, and modification-time metadata when content extraction fails.
+
+### 4. Incremental Indexing & Deduplication
+
+- Tracks file metadata and modification timestamps to identify changed documents.
+- Uses SHA-256 content fingerprints to detect duplicate or unchanged content.
+- Avoids unnecessary parsing and indexing work for unchanged files.
+- Supports incremental index updates to reduce processing overhead and memory consumption.
+
+### 5. File Health Monitoring & Permission Recovery
+
+- Tracks file availability and access permissions independently from indexing status.
+- Distinguishes permission revocation and temporary device/provider unavailability from actual file deletion.
+- Supports recovery workflows for files that become inaccessible after initial indexing.
+- Preserves existing index records when access is revoked or temporarily interrupted, avoiding premature deletion of searchable references.
+
+### 6. Structured Error Handling & Graceful Degradation
+
+Introduces explicit error classification through `IndexErrorCode`, enabling predictable recovery behavior across file access, parsing, and resource constraints.
+
+| Error Code | Cause | Handling Strategy |
+|---|---|---|
+| `ERR_PERMISSION_REVOKED` | Persisted URI permission revoked | Mark access as `PERMISSION_REVOKED`; offer permission re-granting. |
+| `ERR_FILE_NOT_FOUND` | File moved, renamed, or deleted externally | Mark as `MISSING_OR_UNAVAILABLE`; offer file location or reference removal. |
+| `ERR_FILE_TOO_LARGE` | File exceeds the default 25 MB indexing limit | Mark as `EXCLUDED`; retain metadata for search. |
+| `ERR_EMPTY_FILE` | File contains zero bytes | Complete indexing without content rows. |
+| `ERR_PDF_ENCRYPTED` | PDF is password-protected | Record the failure and retain metadata-based discoverability. |
+| `ERR_PDF_SCANNED` | PDF contains no extractable text | Mark as `DONE_WITHOUT_TEXT` and explain the OCR requirement. |
+| `ERR_DOCX_CORRUPT` | ZIP structure or document XML is malformed | Record the parsing failure and retain indexed metadata. |
+| `ERR_IO_TIMEOUT` | External or cloud-backed provider stalls | Retry once with exponential backoff; mark persistent failures as `TEMPORARILY_INACCESSIBLE`. |
+| `ERR_OUT_OF_MEMORY` | Memory pressure during document processing | Release resources where possible, record the failure, and skip content indexing. |
+
+- Separates file access state from indexing status to improve diagnostic accuracy.
+- Uses metadata-only indexing as a fallback when content extraction is impossible.
+- Provides actionable recovery options instead of silently treating inaccessible documents as deleted.
+
+### 7. Debugging & Diagnostic Support
+
+- Adds dedicated diagnostic workflows for inspecting document indexing operations.
+- Supports examination of indexing job queues and extracted text.
+- Enables testing of file-health state transitions and permission revocation scenarios.
+- Facilitates verification of parser behavior, error classification, and fallback mechanisms.
+
+
+
 # Version 1.015.3-C
 
 **Build:** `1053108`
