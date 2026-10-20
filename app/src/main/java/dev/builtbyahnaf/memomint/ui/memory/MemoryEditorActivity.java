@@ -47,6 +47,14 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
+import dev.builtbyahnaf.memomint.data.repository.ConfirmationPolicyRepository;
+import dev.builtbyahnaf.memomint.data.repository.ConfirmationPolicyRepositoryImpl;
+import dev.builtbyahnaf.memomint.data.repository.MemoryRelationRepositoryImpl;
+import dev.builtbyahnaf.memomint.domain.model.ConfirmationPolicy;
+import dev.builtbyahnaf.memomint.domain.model.ConflictDetectionResult;
+import dev.builtbyahnaf.memomint.domain.trust.ConflictDetector;
+import dev.builtbyahnaf.memomint.domain.trust.SupersessionManager;
+import dev.builtbyahnaf.memomint.ui.trust.ConflictResolutionDialog;
 import dev.builtbyahnaf.memomint.R;
 import dev.builtbyahnaf.memomint.application.MemoryService;
 import dev.builtbyahnaf.memomint.application.ReminderScheduler;
@@ -653,6 +661,65 @@ public class MemoryEditorActivity extends AppCompatActivity {
                     if (existingReminder != null) {
                         reminderScheduler.cancel(existingReminder.getId());
                         reminderRepository.deleteByMemoryId(memoryToSave.getId());
+                    }
+                }
+
+                // 3. Phase 5: Initialize ConfirmationPolicy for Physical Items & Locations
+                if (finalType == MemoryType.PHYSICAL_ITEM || finalType == MemoryType.LOCATION) {
+                    ConfirmationPolicyRepository policyRepo =
+                            new ConfirmationPolicyRepositoryImpl(MemoMintDatabase.getInstance(this));
+                    if (policyRepo.findByMemoryId(memoryToSave.getId()) == null) {
+                        long nextCheck = System.currentTimeMillis() + (7L * 86_400_000L); // 7 days
+                        policyRepo.saveOrUpdate(new ConfirmationPolicy(
+                                memoryToSave.getId(),
+                                true,
+                                "WEEKLY",
+                                7,
+                                null,
+                                nextCheck
+                        ));
+                    }
+                }
+
+                // 4. Phase 5: Conflict Detection for New Physical Item Records
+                if (!isEdit && (finalType == MemoryType.PHYSICAL_ITEM || finalType == MemoryType.LOCATION)) {
+                    ConflictDetector detector = new ConflictDetector(
+                            new MemoryRepositoryImpl(MemoMintDatabase.getInstance(this)));
+                    ConflictDetectionResult conflict = detector.detect(memoryToSave);
+
+                    if (conflict.isConflictFound() && conflict.getConflictingMemoryId() != null) {
+                        runOnUiThread(() -> {
+                            ConflictResolutionDialog dialog = ConflictResolutionDialog.newInstance(
+                                    memoryToSave.getId(),
+                                    conflict.getConflictingMemoryId(),
+                                    conflict.getSharedEntityLabel(),
+                                    conflict.getExistingLocationSummary(),
+                                    conflict.getNewLocationSummary()
+                            );
+                            dialog.setListener(new ConflictResolutionDialog.Listener() {
+                                @Override
+                                public void onSupersede(String newMemoryId, String conflictingMemoryId) {
+                                    Executors.newSingleThreadExecutor().execute(() -> {
+                                        MemoMintDatabase dbInstance = MemoMintDatabase.getInstance(MemoryEditorActivity.this);
+                                        SupersessionManager sm = new SupersessionManager(
+                                                new MemoryRelationRepositoryImpl(dbInstance));
+                                        sm.supersede(newMemoryId, conflictingMemoryId, System.currentTimeMillis());
+                                    });
+                                    Toast.makeText(MemoryEditorActivity.this, R.string.msg_memory_saved, Toast.LENGTH_SHORT).show();
+                                    setResult(RESULT_OK);
+                                    finish();
+                                }
+
+                                @Override
+                                public void onKeepBoth(String newMemoryId, String conflictingMemoryId) {
+                                    Toast.makeText(MemoryEditorActivity.this, R.string.msg_memory_saved, Toast.LENGTH_SHORT).show();
+                                    setResult(RESULT_OK);
+                                    finish();
+                                }
+                            });
+                            dialog.show(getSupportFragmentManager(), "conflict_dialog");
+                        });
+                        return;
                     }
                 }
 

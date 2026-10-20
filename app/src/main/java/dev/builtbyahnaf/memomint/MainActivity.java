@@ -32,8 +32,11 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import dev.builtbyahnaf.memomint.application.ConfirmationScheduler;
 import dev.builtbyahnaf.memomint.application.MemoryService;
 import dev.builtbyahnaf.memomint.application.SearchService;
+import dev.builtbyahnaf.memomint.data.repository.MemoryRelationRepositoryImpl;
+import dev.builtbyahnaf.memomint.ui.trust.LocationCheckInDialog;
 import dev.builtbyahnaf.memomint.data.database.MemoMintDatabase;
 import dev.builtbyahnaf.memomint.data.repository.MemoryRepositoryImpl;
 import dev.builtbyahnaf.memomint.data.repository.SearchRepositoryImpl;
@@ -98,6 +101,10 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
         memoryService = new MemoryService(repository);
         SearchRepositoryImpl searchRepository = new SearchRepositoryImpl(database);
         searchService = new SearchService(searchRepository);
+        searchService.setMemoryRelationRepository(new MemoryRelationRepositoryImpl(database));
+
+        // Schedule periodic check-in audit alarm (Phase 5)
+        ConfirmationScheduler.scheduleRecurringAudit(this);
 
         // Bind Views
         recyclerView = findViewById(R.id.recyclerViewMemories);
@@ -345,15 +352,47 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
     /**
      * Handles user confirmation of physical item location or factual freshness (FR-09, Section 15.2).
      *
-     * <p><b>Trust Model Principle:</b> The application cannot physically sense physical belongings
-     * without sensors. Confirmation must always come from explicit user assertion, updating
+     * <p>For physical items and locations, displays the {@link LocationCheckInDialog} allowing
+     * the user to confirm in place, mark as moved, or defer. For notes, directly updates
      * {@code last_confirmed_at} with the current UTC epoch timestamp.</p>
      *
      * @param memory the memory entity whose freshness is confirmed
      */
     @Override
     public void onConfirm(Memory memory) {
-        memoryService.confirmMemory(memory.getId(), new MemoryService.Callback<Boolean>() {
+        if (memory.getType() == MemoryType.PHYSICAL_ITEM || memory.getType() == MemoryType.LOCATION) {
+            String itemLabel = (memory.getTitle() != null && !memory.getTitle().trim().isEmpty())
+                    ? memory.getTitle().trim()
+                    : "this item";
+            LocationCheckInDialog dialog = LocationCheckInDialog.newInstance(
+                    memory.getId(),
+                    itemLabel,
+                    memory.getOriginalText()
+            );
+            dialog.setListener(new LocationCheckInDialog.Listener() {
+                @Override
+                public void onConfirmStillHere(String memoryId) {
+                    performConfirmMemory(memoryId);
+                }
+
+                @Override
+                public void onItemMoved(String memoryId) {
+                    openMemoryEditor(memoryId);
+                }
+
+                @Override
+                public void onNotSure(String memoryId) {
+                    Toast.makeText(MainActivity.this, "Check-in skipped for now", Toast.LENGTH_SHORT).show();
+                }
+            });
+            dialog.show(getSupportFragmentManager(), "location_check_in");
+        } else {
+            performConfirmMemory(memory.getId());
+        }
+    }
+
+    private void performConfirmMemory(String memoryId) {
+        memoryService.confirmMemory(memoryId, new MemoryService.Callback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 Toast.makeText(MainActivity.this, R.string.msg_memory_confirmed, Toast.LENGTH_SHORT).show();

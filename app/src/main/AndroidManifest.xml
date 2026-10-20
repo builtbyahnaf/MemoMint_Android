@@ -54,6 +54,24 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- Phase 5: Check-In Audit Receiver (daily AlarmManager trigger) -->
+        <receiver
+            android:name=".application.CheckInReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.builtbyahnaf.memomint.ACTION_CHECKIN_AUDIT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Phase 5: Check-In Action Receiver (handles "Still Here" notification button) -->
+        <receiver
+            android:name=".application.CheckInActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.builtbyahnaf.memomint.ACTION_CONFIRM_CHECKIN" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

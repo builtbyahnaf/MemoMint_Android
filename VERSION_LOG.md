@@ -1,3 +1,144 @@
+# Version 1.018.3-E
+
+**Build:** `1083541`
+
+## Implementation Summary
+
+Introduced a trust and freshness management system for MemoMint, enabling memory reliability evaluation, contradiction detection, non-destructive historical tracking, and proactive confirmation reminders. Integrated freshness indicators and supersession-aware retrieval to distinguish current information from outdated or conflicting records.
+
+### 1. Domain Models & Value Objects
+
+- **`FreshnessStatus`**
+  - Introduces five memory freshness classifications: `CONFIRMED_FRESH`, `AGING`, `STALE`, `UNCONFIRMED`, and `EVERGREEN`.
+
+- **`FreshnessReport`**
+  - Adds an immutable value object capturing freshness scores, elapsed time, check-in deadlines, and human-readable status descriptions.
+
+- **`SupersessionInfo`**
+  - Represents the lineage between active and superseded records, preserving assertion summaries and historical context.
+
+- **`ConflictDetectionResult`**
+  - Encapsulates conflicting item-location detection results with dedicated factory methods.
+
+### 2. Persistence Layer & Database Schema Version 5
+
+- **Database migration**
+  - Upgrades the database schema to **Version 5** through `DatabaseConstants` and `MemoMintDatabase`.
+  - Implements `applyMigrationV4toV5(db)` with the following composite indexes:
+    - `idx_confirmation_policies_next_check` on `confirmation_policies(enabled, next_check_at)`.
+    - `idx_memory_relations_supersedes` on `memory_relations(relation_type, source_id, target_id)`.
+
+- **`ConfirmationPolicyRepository` & `ConfirmationPolicyRepositoryImpl`**
+  - Implement upsert operations, due-policy queries, and targeted scheduling updates.
+  - Support SQLite cascade cleanup for related records.
+
+- **`MemoryRelationRepository` & `MemoryRelationRepositoryImpl`**
+  - Provide knowledge graph edge traversal and supersession-chain queries.
+
+### 3. Domain Logic
+
+- **`FreshnessEvaluator`**
+  - Implements deterministic, pure-Java freshness evaluation using exponential half-life decay curves.
+  - Preserves evergreen notes from ordinary time-based freshness degradation.
+
+- **`ConflictDetector`**
+  - Identifies contradictory physical-item locations across active memories without relying on cloud-based inference.
+
+- **`SupersessionManager`**
+  - Creates directed `SUPERSEDES` relationships to preserve historical provenance without destructively overwriting previous records.
+
+### 4. Application Services & Native Scheduling
+
+- **`TrustAndFreshnessService`**
+  - Coordinates freshness evaluation, confirmation policies, and supersession workflows.
+
+- **Confirmation scheduling components**
+  - `ConfirmationScheduler`
+  - `CheckInReceiver`
+  - `CheckInNotificationHelper`
+  - `CheckInActionReceiver`
+
+  These components implement daily background check-in audits using Android's native `AlarmManager`, with battery-conscious scheduling and one-tap notification actions, including **"Still Here"**.
+
+- **`FileHealthRecoveryService`**
+  - Manages Storage Access Framework (SAF) document reconnection and relocation while preserving associated memory records and extracted text context.
+
+### 5. Presentation Layer & Retrieval Integration
+
+- **`LocationCheckInDialog`**
+  - Introduces an interactive location confirmation dialog with three options:
+    - `Still Here`
+    - `Moved`
+    - `Not Sure`
+  - Connects user responses to `MainActivity` workflows.
+
+- **`ConflictResolutionDialog`**
+  - Surfaces location conflicts in `MemoryEditorActivity` when contradictory information is detected during memory creation.
+
+- **`MemoryAdapter` & `item_memory.xml`**
+  - Add dynamically color-coded freshness indicators for `CONFIRMED_FRESH`, `AGING`, `STALE`, and `UNCONFIRMED` memories.
+
+- **`SearchService`**
+  - De-prioritizes superseded records in primary search results.
+  - Preserves historical discoverability through transparent provenance labels, such as `Historical record (superseded by newer memory)`.
+
+
+# Version 1.017.6-F
+
+**Build:** `1076284`
+
+## Implementation Summary
+
+Enhanced memory management with a dedicated full-screen editor, integrated file references and location metadata, and introduced a complete reminder scheduling system with recurring notifications and intelligent, offline reminder parsing.
+
+### 1. Full-Screen Memory Creation & Editing
+
+- Replaced the previous modal dialog with `MemoryEditorActivity`, featuring a dedicated Material 3 layout in `activity_memory_editor.xml`.
+- Updated `MainActivity` to launch the editor from both the floating action button (new memories) and card-level **Edit** actions.
+- Implemented lifecycle-aware reload handling to refresh the main interface after editing.
+- Added edge-to-edge system window inset handling for improved layout compatibility.
+- Introduced an unsaved-change confirmation dialog to prevent accidental loss of edits.
+
+### 2. File References & Location Support
+
+- Integrated Android's Storage Access Framework (SAF) using `ActivityResultContracts.OpenDocument` for file selection with persistable URI permissions.
+- Added an editable file path/location field, allowing users to enter or modify on-device paths and URIs.
+- Implemented file metadata resolution, including:
+  - Display name
+  - Formatted file size
+  - MIME type
+- Persisted file references in SQLite through `FileReferenceRepositoryImpl`.
+
+### 3. Notifications & Recurring Reminders
+
+- Upgraded the SQLite database schema to **Version 4** through `DatabaseConstants.java` and `MemoMintDatabase.java`.
+- Added `repeat_interval` support with the following recurrence options:
+  - `NONE`
+  - `DAILY`
+  - `WEEKLY`
+  - `MONTHLY`
+- Introduced `ReminderRepository` for reminder persistence and `ReminderScheduler` for alarm scheduling.
+- Implemented exact alarm scheduling using `AlarmManager.setExactAndAllowWhileIdle()`.
+- Added `ReminderNotificationHelper` with a dedicated, high-priority notification channel.
+- Implemented `ReminderReceiver` to deliver notifications, advance recurring schedules, and schedule subsequent alarms.
+- Added `BootReceiver` to restore pending reminder alarms after device restarts.
+
+### 4. Intelligent, Token-Efficient Reminder Parsing
+
+- Implemented `ReminderParser`, a deterministic, fully on-device NLP parser that operates in under 1 ms, with zero cloud tokens and no network dependencies.
+- Extracts reminder intent and generates cleaner action titles by removing unnecessary phrases, including:
+  - `remind me to`
+  - `remember to`
+  - Redundant temporal expressions
+- Calculates target timestamps using:
+  - Relative time offsets
+  - Calendar dates
+  - Qualitative and explicitly specified times
+- Detects recurrence rules for repeated reminders.
+- Integrated a debounced suggestion chip into `MemoryEditorActivity` for applying parsed reminders with a single tap.
+- Added manual date and time pickers to let users refine automatically detected reminder schedules.
+
+
 # Version 1.016.2-D
 
 **Build:** `1062487`

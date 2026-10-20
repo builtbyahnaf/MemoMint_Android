@@ -43,9 +43,12 @@ public final class DatabaseConstants {
      *   <li>Version 2: Full-text search virtual table (memories_fts) and sync triggers (Phase 2).</li>
      *   <li>Version 3: Document full-text search virtual table (files_fts) for Phase 4 file indexing.</li>
      *   <li>Version 4: Added repeat_interval column to reminders table for recurring notifications.</li>
+     *   <li>Version 5: Added index on confirmation_policies(enabled, next_check_at) and
+     *       index on memory_relations(relation_type, source_id, target_id) for Phase 5
+     *       Trust and Freshness queries.</li>
      * </ul>
      */
-    public static final int DATABASE_VERSION = 4;
+    public static final int DATABASE_VERSION = 5;
 
     // =========================================================================
     // Table: memories
@@ -662,5 +665,38 @@ public final class DatabaseConstants {
          * Alias pointing to preferred FTS definition.
          */
         public static final String CREATE_FILES_FTS = CREATE_FILES_FTS5;
+
+        // =====================================================================
+        // Schema Version 5: Phase 5 Trust & Freshness Indexes
+        // =====================================================================
+
+        /**
+         * Composite index on {@code confirmation_policies(enabled, next_check_at)} for efficient
+         * Phase 5 check-in audit queries: {@code WHERE enabled=1 AND next_check_at <= now}.
+         *
+         * <p>This index was not present in v4 (the table was created in v1 without it).
+         * Adding it in v5 migration improves background check-in query performance from O(N)
+         * full-table-scan to an O(log N) index lookup.</p>
+         */
+        public static final String CREATE_IDX_CONFIRMATION_POLICIES_NEXT_CHECK =
+                "CREATE INDEX IF NOT EXISTS idx_confirmation_policies_next_check"
+                        + " ON " + ConfirmationPolicies.TABLE + "("
+                        + ConfirmationPolicies.COL_ENABLED + ", "
+                        + ConfirmationPolicies.COL_NEXT_CHECK_AT + ")";
+
+        /**
+         * Composite index on {@code memory_relations(relation_type, source_id, target_id)} for
+         * efficient Phase 5 supersession traversal queries:
+         * {@code WHERE relation_type='SUPERSEDES' AND (source_id=? OR target_id=?)}.
+         *
+         * <p>Complements the existing source and target indexes to speed up the combined
+         * relation-type + endpoint lookups needed by {@code SupersessionManager}.</p>
+         */
+        public static final String CREATE_IDX_MEMORY_RELATIONS_SUPERSEDES =
+                "CREATE INDEX IF NOT EXISTS idx_memory_relations_supersedes"
+                        + " ON " + MemoryRelations.TABLE + "("
+                        + MemoryRelations.COL_RELATION_TYPE + ", "
+                        + MemoryRelations.COL_SOURCE_ID + ", "
+                        + MemoryRelations.COL_TARGET_ID + ")";
     }
 }

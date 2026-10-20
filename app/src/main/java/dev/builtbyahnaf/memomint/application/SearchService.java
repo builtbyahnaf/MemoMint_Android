@@ -83,6 +83,16 @@ public class SearchService {
     private final RelevanceScorer relevanceScorer;
     private final Executor backgroundExecutor;
     private final Executor callbackExecutor;
+    private dev.builtbyahnaf.memomint.data.repository.MemoryRelationRepository memoryRelationRepository;
+
+    /**
+     * Sets the relation repository to enable Phase 5 supersession history filtering.
+     *
+     * @param memoryRelationRepository repository for checking superseded memories
+     */
+    public void setMemoryRelationRepository(dev.builtbyahnaf.memomint.data.repository.MemoryRelationRepository memoryRelationRepository) {
+        this.memoryRelationRepository = memoryRelationRepository;
+    }
 
     /**
      * Production constructor initializing default background executor and main thread callback delivery.
@@ -512,6 +522,12 @@ public class SearchService {
 
         // Combine all 5 signals via RelevanceScorer
         double finalScore = relevanceScorer.computeFinalScore(sText, sSynonym, sMeta, sFuzzy, sRelation);
+
+        // Phase 5: Check if candidate memory is superseded by a newer record
+        if (memoryRelationRepository != null && memoryRelationRepository.isSuperseded(memory.getId())) {
+            explanations.add("Historical record (superseded by newer memory)");
+            finalScore = finalScore * 0.6; // de-prioritize superseded record in ranking
+        }
 
         // Freshness status calculation
         SearchResult.FreshnessStatus freshness = SearchResult.calculateFreshness(memory);

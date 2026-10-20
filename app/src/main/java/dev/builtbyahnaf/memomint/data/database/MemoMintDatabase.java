@@ -175,6 +175,7 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
             createVersion1Schema(db);
             createVersion2Schema(db);
             createVersion3Schema(db);
+            createVersion5Schema(db);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -214,6 +215,9 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
                 // fall through
             case 3:
                 applyMigrationV3toV4(db);
+                // fall through
+            case 4:
+                applyMigrationV4toV5(db);
                 // fall through
             default:
                 break;
@@ -621,6 +625,40 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
             Log.i(TAG, "Successfully upgraded database schema to version 4 (added repeat_interval column to reminders)");
         } catch (Exception e) {
             Log.e(TAG, "Failed to apply migration V3 to V4: " + e.getMessage(), e);
+            throw e;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    private void createVersion5Schema(SQLiteDatabase db) {
+        db.execSQL(DatabaseConstants.Sql.CREATE_IDX_CONFIRMATION_POLICIES_NEXT_CHECK);
+        db.execSQL(DatabaseConstants.Sql.CREATE_IDX_MEMORY_RELATIONS_SUPERSEDES);
+    }
+
+    /**
+     *
+     * <p>Creates performance indexes required by Phase 5 Trust and Freshness features:</p>
+     * <ul>
+     *   <li>A composite index on {@code confirmation_policies(enabled, next_check_at)} so
+     *       the daily check-in auditor can efficiently find due records without a full
+     *       table scan.</li>
+     *   <li>A composite index on {@code memory_relations(relation_type, source_id, target_id)}
+     *       to accelerate supersession chain queries performed by the conflict-detection
+     *       and supersession management services.</li>
+     * </ul>
+     *
+     * @param db the database being upgraded
+     */
+    private void applyMigrationV4toV5(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            db.execSQL(DatabaseConstants.Sql.CREATE_IDX_CONFIRMATION_POLICIES_NEXT_CHECK);
+            db.execSQL(DatabaseConstants.Sql.CREATE_IDX_MEMORY_RELATIONS_SUPERSEDES);
+            db.setTransactionSuccessful();
+            Log.i(TAG, "Successfully upgraded database schema to version 5 (Phase 5 Trust & Freshness indexes)");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to apply migration V4 to V5: " + e.getMessage(), e);
             throw e;
         } finally {
             db.endTransaction();

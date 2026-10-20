@@ -24,6 +24,9 @@ import dev.builtbyahnaf.memomint.R;
 import dev.builtbyahnaf.memomint.domain.model.Memory;
 import dev.builtbyahnaf.memomint.domain.model.MemoryStatus;
 import dev.builtbyahnaf.memomint.domain.model.MemoryType;
+import dev.builtbyahnaf.memomint.domain.model.FreshnessStatus;
+import dev.builtbyahnaf.memomint.domain.trust.FreshnessEvaluator;
+import dev.builtbyahnaf.memomint.domain.model.FreshnessReport;
 
 /**
  * RecyclerView adapter responsible for presenting {@link Memory} cards in the primary memory feed.
@@ -183,6 +186,7 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
         private final TextView tvDate;
         private final TextView tvTitle;
         private final TextView tvOriginalText;
+        private final TextView tvFreshnessChip;
         private final View layoutConfirmation;
         private final TextView tvConfirmationStatus;
         private final MaterialButton btnConfirm;
@@ -196,6 +200,7 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
             tvDate = itemView.findViewById(R.id.tvDate);
             tvTitle = itemView.findViewById(R.id.tvTitle);
             tvOriginalText = itemView.findViewById(R.id.tvOriginalText);
+            tvFreshnessChip = itemView.findViewById(R.id.tvFreshnessChip);
             layoutConfirmation = itemView.findViewById(R.id.layoutConfirmation);
             tvConfirmationStatus = itemView.findViewById(R.id.tvConfirmationStatus);
             btnConfirm = itemView.findViewById(R.id.btnConfirm);
@@ -306,10 +311,51 @@ public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.MemoryView
 
         /**
          * Renders freshness indicator for items and locations.
+         *
+         * <p>Phase 5 enhancement: evaluates freshness using {@link FreshnessEvaluator} (without
+         * a policy — the adapter uses a 30-day default interval so it can be purely synchronous
+         * in the bind pass). A coloured chip above the confirm section gives an at-a-glance
+         * status to the user.</p>
          */
         private void bindConfirmationSection(Context context, Memory memory) {
             // Confirmation applies primarily to PHYSICAL_ITEM and LOCATION
-            boolean isPhysical = (memory.getType() == MemoryType.PHYSICAL_ITEM || memory.getType() == MemoryType.LOCATION);
+            boolean isPhysical = (memory.getType() == MemoryType.PHYSICAL_ITEM
+                    || memory.getType() == MemoryType.LOCATION);
+
+            // Phase 5: Freshness chip (shown for all physical/location memories)
+            if (tvFreshnessChip != null) {
+                if (isPhysical) {
+                    FreshnessEvaluator evaluator = new FreshnessEvaluator();
+                    FreshnessReport report = evaluator.evaluate(memory, null);
+                    tvFreshnessChip.setVisibility(View.VISIBLE);
+                    tvFreshnessChip.setText(report.getHumanReadableStatus());
+                    // Colour-code the chip by status
+                    if (report.getStatus() == FreshnessStatus.CONFIRMED_FRESH) {
+                        tvFreshnessChip.setBackgroundColor(
+                                ContextCompat.getColor(context, R.color.badge_physical_item_bg));
+                        tvFreshnessChip.setTextColor(
+                                ContextCompat.getColor(context, R.color.badge_physical_item_text));
+                    } else if (report.getStatus() == FreshnessStatus.AGING) {
+                        tvFreshnessChip.setBackgroundColor(
+                                ContextCompat.getColor(context, R.color.badge_reminder_bg));
+                        tvFreshnessChip.setTextColor(
+                                ContextCompat.getColor(context, R.color.badge_reminder_text));
+                    } else if (report.getStatus() == FreshnessStatus.STALE) {
+                        tvFreshnessChip.setBackgroundColor(
+                                ContextCompat.getColor(context, R.color.badge_document_bg));
+                        tvFreshnessChip.setTextColor(
+                                ContextCompat.getColor(context, R.color.badge_document_text));
+                    } else {
+                        // UNCONFIRMED / default
+                        tvFreshnessChip.setBackgroundColor(
+                                ContextCompat.getColor(context, R.color.badge_note_bg));
+                        tvFreshnessChip.setTextColor(
+                                ContextCompat.getColor(context, R.color.badge_note_text));
+                    }
+                } else {
+                    tvFreshnessChip.setVisibility(View.GONE);
+                }
+            }
 
             if (isPhysical) {
                 layoutConfirmation.setVisibility(View.VISIBLE);

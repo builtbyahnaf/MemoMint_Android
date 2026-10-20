@@ -75,6 +75,20 @@
             android:textSize="14sp"
             tools:text="Left the spare cable in the second drawer of my desk beside the bed." />
 
+        <!-- Phase 5: Freshness Status Chip -->
+        <TextView
+            android:id="@+id/tvFreshnessChip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@color/badge_note_bg"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="✓ Confirmed fresh"
+            tools:visibility="visible" />
+
         <!-- Freshness / Confirmation Status -->
         <LinearLayout
             android:id="@+id/layoutConfirmation"
@@ -105,6 +119,30 @@
                 android:text="@string/action_confirm"
                 android:textColor="?attr/colorPrimary"
                 android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Phase 5: Supersession History Banner (shown if memory has been superseded) -->
+        <LinearLayout
+            android:id="@+id/layoutSupersededBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="#1AFF9800"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tvSupersededLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="This location was previously updated"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp"
+                android:textStyle="italic" />
         </LinearLayout>
 
         <!-- Action Row (Edit, Archive/Restore, Delete) -->
