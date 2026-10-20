@@ -1,18 +1,21 @@
 package dev.builtbyahnaf.memomint;
 
-import android.content.DialogInterface;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.view.LayoutInflater;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AlertDialog;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -37,18 +40,17 @@ import dev.builtbyahnaf.memomint.data.repository.SearchRepositoryImpl;
 import dev.builtbyahnaf.memomint.domain.model.Memory;
 import dev.builtbyahnaf.memomint.domain.model.MemoryStatus;
 import dev.builtbyahnaf.memomint.domain.model.MemoryType;
-import dev.builtbyahnaf.memomint.domain.model.SourceType;
 import dev.builtbyahnaf.memomint.domain.retrieval.SearchResult;
 import dev.builtbyahnaf.memomint.ui.memory.MemoryAdapter;
+import dev.builtbyahnaf.memomint.ui.memory.MemoryEditorActivity;
 import dev.builtbyahnaf.memomint.ui.search.SearchAdapter;
 
 /**
- * Primary user interface for Project MemoMint (Phase 1 & Phase 2).
+ * Primary user interface for Project MemoMint.
  *
  * <h2>Purpose & Architectural Scope</h2>
- * <p>Serves as the main activity satisfying Phase 1 and Phase 2 requirements:
- * offline memory capture, editing, lifecycle management, and natural language retrieval
- * with transparent explanations.</p>
+ * <p>Serves as the main dashboard for offline memory retrieval, lifecycle management,
+ * and entry point to the full-screen {@link MemoryEditorActivity}.</p>
  */
 public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnMemoryActionListener {
 
@@ -69,6 +71,20 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
     private MemoryStatus currentFilterStatus = MemoryStatus.ACTIVE;
     private boolean isSearchActive = false;
     private String currentSearchQuery = "";
+
+    private final ActivityResultLauncher<Intent> editorLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    loadMemories();
+                }
+            });
+
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (!isGranted) {
+                    Log.w("MainActivity", "Notification permission not granted.");
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,7 +148,9 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
         searchAdapter = new SearchAdapter(new SearchAdapter.OnSearchResultClickListener() {
             @Override
             public void onEdit(Memory memory) {
-                showMemoryEditorDialog(memory);
+                if (memory != null) {
+                    openMemoryEditor(memory.getId());
+                }
             }
 
             @Override
@@ -181,11 +199,42 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
             loadMemories();
         });
 
-        // Configure FAB for Memory Creation:
-        fabAddMemory.setOnClickListener(v -> showMemoryEditorDialog(/* memoryToEdit= */ null));
+        // Configure FAB for Memory Creation (Launches Full-Sized Activity):
+        fabAddMemory.setOnClickListener(v -> openMemoryEditor(/* memoryId= */ null));
+
+        // Prompt for notification permission on Android 13+ if not already granted
+        checkNotificationPermission();
 
         // Initial asynchronous query to populate the memory feed upon activity launch.
         loadMemories();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadMemories();
+    }
+
+    private void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+    }
+
+    /**
+     * Launches the full-screen {@link MemoryEditorActivity} for creating or editing memories.
+     *
+     * @param memoryId target memory UUID if editing; null if creating a new memory
+     */
+    private void openMemoryEditor(String memoryId) {
+        Intent intent = new Intent(this, MemoryEditorActivity.class);
+        if (memoryId != null) {
+            intent.putExtra(MemoryEditorActivity.EXTRA_MEMORY_ID, memoryId);
+        }
+        editorLauncher.launch(intent);
     }
 
     /**
@@ -277,145 +326,20 @@ public class MainActivity extends AppCompatActivity implements MemoryAdapter.OnM
     }
 
     // =========================================================================
-    // Memory Creation and Editing Dialogs
-    // =========================================================================
-
-    /**
-     * Displays a Material dialog for capturing a new memory or editing an existing one.
-     *
-     * <h2>Purpose & Workflow</h2>
-     * <p>Provides a low-friction entry point for users to capture unstructured text without
-     * mandatory categorization, while supporting optional titles and type overrides.</p>
-     *
-     * <h2>Dialog Validation Lifecycle & Edge Case Handling</h2>
-     * <p>By default, Android's {@link AlertDialog} auto-dismisses upon clicking any positive
-     * or negative button regardless of input validity. To prevent accidental dialog dismissal
-     * when form validation fails (e.g. empty original text):</p>
-     * <ul>
-     *   <li>Pass {@code null} as the positive button listener in {@link MaterialAlertDialogBuilder}.</li>
-     *   <li>Attach a custom {@link View.OnClickListener} inside {@link AlertDialog#setOnShowListener}.</li>
-     *   <li>Validate {@code etOriginalText}: if blank, set an error on {@code etOriginalText} and
-     *       return immediately without dismissing the dialog or making database calls.</li>
-     *   <li>Only call {@link DialogInterface#dismiss()} after {@link MemoryService} reports
-     *       successful persistence.</li>
-     * </ul>
-     *
-     * @param memoryToEdit the existing Memory to edit, or null to record a new one
-     */
-    private void showMemoryEditorDialog(Memory memoryToEdit) {
-        boolean isEdit = (memoryToEdit != null);
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View dialogView = inflater.inflate(R.layout.dialog_memory_editor, null);
-
-        Spinner spinnerType = dialogView.findViewById(R.id.spinnerMemoryType);
-        TextInputEditText etTitle = dialogView.findViewById(R.id.etTitle);
-        TextInputEditText etOriginalText = dialogView.findViewById(R.id.etOriginalText);
-
-        // Populate MemoryType Spinner with user-friendly formatted labels (e.g. PHYSICAL_ITEM -> PHYSICAL ITEM)
-        MemoryType[] types = MemoryType.values();
-        String[] typeNames = new String[types.length];
-        for (int i = 0; i < types.length; i++) {
-            typeNames[i] = types[i].name().replace('_', ' ');
-        }
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, typeNames);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerType.setAdapter(spinnerAdapter);
-
-        // If editing, pre-fill form fields with current values from the database record
-        if (isEdit) {
-            etTitle.setText(memoryToEdit.getTitle());
-            etOriginalText.setText(memoryToEdit.getOriginalText());
-            for (int i = 0; i < types.length; i++) {
-                if (types[i] == memoryToEdit.getType()) {
-                    spinnerType.setSelection(i);
-                    break;
-                }
-            }
-        }
-
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-                .setTitle(isEdit ? R.string.dialog_edit_title : R.string.dialog_create_title)
-                .setView(dialogView)
-                .setPositiveButton(R.string.action_save, null) // Custom listener attached in setOnShowListener below
-                .setNegativeButton(R.string.action_cancel, (d, which) -> d.dismiss())
-                .create();
-
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String originalText = etOriginalText.getText() != null ? etOriginalText.getText().toString().trim() : "";
-                String title = etTitle.getText() != null ? etTitle.getText().toString().trim() : "";
-                int selectedTypePos = spinnerType.getSelectedItemPosition();
-                MemoryType selectedType = (selectedTypePos >= 0 && selectedTypePos < types.length) ? types[selectedTypePos] : MemoryType.NOTE;
-
-                // Validation: original text must not be empty (FR-01, FR-03)
-                if (originalText.isEmpty()) {
-                    etOriginalText.setError(getString(R.string.error_empty_text));
-                    return;
-                }
-
-                if (isEdit) {
-                    // Update existing memory record; updates updatedAt while preserving createdAt and provenance
-                    memoryService.updateMemory(
-                            memoryToEdit.getId(),
-                            originalText,
-                            title,
-                            selectedType,
-                            new MemoryService.Callback<Memory>() {
-                                @Override
-                                public void onSuccess(Memory result) {
-                                    Toast.makeText(MainActivity.this, R.string.msg_memory_saved, Toast.LENGTH_SHORT).show();
-                                    dialog.dismiss();
-                                    loadMemories();
-                                }
-
-                                @Override
-                                public void onError(Throwable t) {
-                                    Toast.makeText(MainActivity.this, "Save failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                    );
-                } else {
-                    // Create brand new memory record with status ACTIVE and generated UUID
-                    memoryService.createMemory(
-                            originalText,
-                            title,
-                            selectedType,
-                            SourceType.TYPED,
-                            /* sourceId= */ null,
-                            new MemoryService.Callback<Memory>() {
-                                @Override
-                                public void onSuccess(Memory result) {
-                                    Toast.makeText(MainActivity.this, R.string.msg_memory_saved, Toast.LENGTH_SHORT).show();
-                                    dialog.dismiss();
-                                    loadMemories();
-                                }
-
-                                @Override
-                                public void onError(Throwable t) {
-                                    Toast.makeText(MainActivity.this, "Save failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                    );
-                }
-            });
-        });
-
-        dialog.show();
-    }
-
-    // =========================================================================
     // MemoryAdapter Callbacks (Item Actions)
     // =========================================================================
 
     /**
      * Handles the user tapping "Edit" on a memory card.
-     * Launches the pre-populated editor dialog for the selected memory.
+     * Launches the full-screen editor activity for the selected memory.
      *
      * @param memory the memory entity to modify
      */
     @Override
     public void onEdit(Memory memory) {
-        showMemoryEditorDialog(memory);
+        if (memory != null) {
+            openMemoryEditor(memory.getId());
+        }
     }
 
     /**

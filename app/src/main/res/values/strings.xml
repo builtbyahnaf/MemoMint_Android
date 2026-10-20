@@ -31,4 +31,30 @@
     <string name="search_hint">Search memories (e.g. backup cable)</string>
     <string name="search_no_results">No matching memories found</string>
     <string name="search_no_results_subtitle">Try different keywords or check your spelling</string>
+
+    <!-- Full-sized Memory Editor -->
+    <string name="title_activity_memory_editor">New Memory</string>
+    <string name="title_activity_memory_editor_edit">Edit Memory</string>
+    <string name="section_reminder">Reminder &amp; Notifications</string>
+    <string name="label_enable_reminder">Set reminder notification</string>
+    <string name="hint_reminder_title">Reminder note / action</string>
+    <string name="label_reminder_date">Date</string>
+    <string name="label_reminder_time">Time</string>
+    <string name="label_repeat_frequency">Repeats</string>
+    <string name="repeat_none">Does not repeat</string>
+    <string name="repeat_daily">Every day</string>
+    <string name="repeat_weekly">Every week</string>
+    <string name="repeat_monthly">Every month</string>
+    <string name="smart_reminder_detected">✨ Smart reminder detected from your text. Tap to apply.</string>
+    <string name="smart_reminder_applied">✨ Smart reminder applied: %s</string>
+    <string name="section_file_attachment">File &amp; File Location</string>
+    <string name="label_file_location">File Path / Location</string>
+    <string name="hint_file_location">e.g. content:// or /sdcard/Documents/project.pdf</string>
+    <string name="btn_pick_file">Browse File</string>
+    <string name="btn_clear_file">Clear File</string>
+    <string name="file_selected_prefix">Attached: %s</string>
+    <string name="file_size_format">Size: %s</string>
+    <string name="discard_dialog_title">Discard Changes?</string>
+    <string name="discard_dialog_message">You have unsaved changes. Are you sure you want to discard them?</string>
+    <string name="action_discard">Discard</string>
 </resources>

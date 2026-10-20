@@ -212,6 +212,9 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
             case 2:
                 applyMigrationV2toV3(db);
                 // fall through
+            case 3:
+                applyMigrationV3toV4(db);
+                // fall through
             default:
                 break;
         }
@@ -598,6 +601,27 @@ public class MemoMintDatabase extends SQLiteOpenHelper {
         try {
             createVersion3Schema(db);
             db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /**
+     * Applies the migration from Version 3 to Version 4.
+     *
+     * <p>Adds the repeat_interval column to reminders table for recurring notifications.</p>
+     *
+     * @param db the database being upgraded
+     */
+    private void applyMigrationV3toV4(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            db.execSQL(DatabaseConstants.Sql.ALTER_REMINDERS_ADD_REPEAT_INTERVAL);
+            db.setTransactionSuccessful();
+            Log.i(TAG, "Successfully upgraded database schema to version 4 (added repeat_interval column to reminders)");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to apply migration V3 to V4: " + e.getMessage(), e);
+            throw e;
         } finally {
             db.endTransaction();
         }

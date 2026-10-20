@@ -71,15 +71,22 @@ public class Reminder {
      */
     private Long lastScheduledAt;
 
+    /**
+     * Recurrence rule or repetition interval: "NONE", "DAILY", "WEEKLY", "MONTHLY".
+     */
+    private String repeatInterval = "NONE";
+
     // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
 
     /** No-argument constructor for repository deserialization. */
-    public Reminder() {}
+    public Reminder() {
+        this.repeatInterval = "NONE";
+    }
 
     /**
-     * Full constructor.
+     * Legacy constructor (defaults repeatInterval to "NONE").
      *
      * @param id              stable UUID
      * @param memoryId        linked memory UUID; may be null
@@ -102,6 +109,24 @@ public class Reminder {
             Long completedAt,
             Long lastScheduledAt
     ) {
+        this(id, memoryId, title, scheduledAt, timeZoneId, status, createdAt, completedAt, lastScheduledAt, "NONE");
+    }
+
+    /**
+     * Full constructor including repeatInterval.
+     */
+    public Reminder(
+            String id,
+            String memoryId,
+            String title,
+            long scheduledAt,
+            String timeZoneId,
+            ReminderStatus status,
+            long createdAt,
+            Long completedAt,
+            Long lastScheduledAt,
+            String repeatInterval
+    ) {
         this.id = id;
         this.memoryId = memoryId;
         this.title = title;
@@ -111,6 +136,7 @@ public class Reminder {
         this.createdAt = createdAt;
         this.completedAt = completedAt;
         this.lastScheduledAt = lastScheduledAt;
+        this.repeatInterval = (repeatInterval != null && !repeatInterval.trim().isEmpty()) ? repeatInterval : "NONE";
     }
 
     // -------------------------------------------------------------------------
@@ -296,6 +322,33 @@ public class Reminder {
      */
     public void setLastScheduledAt(Long lastScheduledAt) {
         this.lastScheduledAt = lastScheduledAt;
+    }
+
+    /**
+     * Gets the repetition interval ("NONE", "DAILY", "WEEKLY", "MONTHLY").
+     *
+     * @return repeat interval string; never null (defaults to "NONE")
+     */
+    public String getRepeatInterval() {
+        return repeatInterval != null ? repeatInterval : "NONE";
+    }
+
+    /**
+     * Sets the repetition interval.
+     *
+     * @param repeatInterval repeat interval string
+     */
+    public void setRepeatInterval(String repeatInterval) {
+        this.repeatInterval = (repeatInterval != null && !repeatInterval.trim().isEmpty()) ? repeatInterval : "NONE";
+    }
+
+    /**
+     * Checks if this reminder has a recurring/repeating schedule.
+     *
+     * @return true if repeatInterval is not NONE
+     */
+    public boolean isRepeating() {
+        return repeatInterval != null && !"NONE".equalsIgnoreCase(repeatInterval.trim());
     }
 
     /**

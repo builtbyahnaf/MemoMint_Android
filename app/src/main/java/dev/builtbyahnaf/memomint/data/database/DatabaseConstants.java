@@ -42,9 +42,10 @@ public final class DatabaseConstants {
      *   <li>Version 1: Initial schema (Phase 1 — all core tables).</li>
      *   <li>Version 2: Full-text search virtual table (memories_fts) and sync triggers (Phase 2).</li>
      *   <li>Version 3: Document full-text search virtual table (files_fts) for Phase 4 file indexing.</li>
+     *   <li>Version 4: Added repeat_interval column to reminders table for recurring notifications.</li>
      * </ul>
      */
-    public static final int DATABASE_VERSION = 3;
+    public static final int DATABASE_VERSION = 4;
 
     // =========================================================================
     // Table: memories
@@ -217,6 +218,7 @@ public final class DatabaseConstants {
         public static final String COL_CREATED_AT       = "created_at";
         public static final String COL_COMPLETED_AT     = "completed_at";
         public static final String COL_LAST_SCHEDULED_AT = "last_scheduled_at";
+        public static final String COL_REPEAT_INTERVAL  = "repeat_interval";
     }
 
     // =========================================================================
@@ -465,10 +467,19 @@ public final class DatabaseConstants {
                         + Reminders.COL_CREATED_AT       + " INTEGER NOT NULL, "
                         + Reminders.COL_COMPLETED_AT     + " INTEGER, "
                         + Reminders.COL_LAST_SCHEDULED_AT + " INTEGER, "
+                        + Reminders.COL_REPEAT_INTERVAL  + " TEXT NOT NULL DEFAULT 'NONE', "
                         + "FOREIGN KEY (" + Reminders.COL_MEMORY_ID + ") "
                         + "  REFERENCES " + Memories.TABLE + "(" + Memories.COL_ID + ") "
                         + "  ON DELETE CASCADE"
                         + ")";
+
+        /**
+         * Migration DDL: Adds repeat_interval column to reminders (Schema v3 -> v4).
+         */
+        public static final String ALTER_REMINDERS_ADD_REPEAT_INTERVAL =
+                "ALTER TABLE " + Reminders.TABLE
+                        + " ADD COLUMN " + Reminders.COL_REPEAT_INTERVAL
+                        + " TEXT NOT NULL DEFAULT 'NONE'";
 
         /**
          * Index on reminders.status + scheduled_at for efficient pending-reminder queries.
